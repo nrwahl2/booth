@@ -19,6 +19,7 @@
 
 #include "b_config.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -99,17 +100,17 @@ booth__foreach_const_ticket(const struct booth_config *conf,
     return true;
 }
 
-/* Untrusted input, must fit (incl. \0) in a buffer of max chars. */
-int
-check_max_len_valid(const char *s, int max)
+/* Untrusted input, must fit (incl. \0) in a boothc_ticket. */
+bool
+valid_ticket_name(const char *s)
 {
-	for (int i = 0; i < max; i++) {
+	for (int i = 0; i < sizeof(boothc_ticket); i++) {
 		if (s[i] == 0) {
-			return 1;
+			return true;
 		}
 	}
 
-	return 0;
+	return false;
 }
 
 struct check_ticket_name_data {
@@ -162,7 +163,7 @@ check_ticket(const struct booth_config *conf, const char *name,
 		return false;
 	}
 
-	if (!check_max_len_valid(name, sizeof(conf->ticket[0].name))) {
+	if (!valid_ticket_name(name)) {
 		return false;
 	}
 

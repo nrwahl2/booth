@@ -20,6 +20,7 @@
 #ifndef _TICKET_H
 #define _TICKET_H
 
+#include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
@@ -140,7 +141,7 @@ void update_ticket_state(const struct booth_config *conf,
  */
 bool booth__setup_ticket(struct ticket_config *ticket, void *user_data);
 
-int check_max_len_valid(const char *s, int max);
+bool valid_ticket_name(const char *s);
 
 /**
  * @internal

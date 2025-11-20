@@ -294,7 +294,7 @@ add_ticket(struct booth_config *conf, const char *name,
 	tk = conf->ticket + conf->ticket_count;
 	conf->ticket_count++;
 
-	if (!check_max_len_valid(name, sizeof(tk->name))) {
+	if (!valid_ticket_name(name)) {
 		log_error("ticket name \"%s\" too long.", name);
 		return -EINVAL;
 	}
