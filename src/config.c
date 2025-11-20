@@ -286,7 +286,6 @@ add_ticket(struct booth_config *conf, const char *name,
 	tk->mode = def->mode;
 
 	conf->tickets = g_slist_append(conf->tickets, tk);
-	conf->ticket_count++;
 
 	if (tkp)
 		*tkp = tk;

@@ -817,7 +817,7 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 	 * Although, that means that the UDP port has to be specified, too. */
 	if (!cl.msg.ticket.id[0]) {
 		/* If the loaded configuration has only a single ticket defined, use that. */
-		if (conf->ticket_count == 1) {
+		if ((conf->tickets != NULL) && (conf->tickets->next == NULL)) {
 			const struct ticket_config *tk = g_slist_nth_data(conf->tickets, 0);
 
 			strncpy(cl.msg.ticket.id, tk->name,
@@ -1627,7 +1627,7 @@ do_attr(struct booth_config **conf)
 	 * Although, that means that the UDP port has to be specified, too. */
 	if (!cl.attr_msg.attr.tkt_id[0]) {
 		/* If the loaded configuration has only a single ticket defined, use that. */
-		if ((*conf)->ticket_count == 1) {
+		if (((*conf)->tickets != NULL) && ((*conf)->tickets->next == NULL)) {
 			const struct ticket_config *tk = g_slist_nth_data((*conf)->tickets, 0);
 
 			strncpy(cl.attr_msg.attr.tkt_id, tk->name,

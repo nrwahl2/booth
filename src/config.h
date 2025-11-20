@@ -330,8 +330,6 @@ struct booth_config {
     int site_count;
     struct booth_site site[MAX_NODES];
 
-    int ticket_count;
-    int ticket_allocated;
     GSList *tickets;        // struct ticket_config *
 };
 
