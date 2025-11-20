@@ -44,6 +44,8 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
+#include <glib.h>			// g_slist_nth_data
+
 #include <crm/services.h>
 
 #if HAVE_LIBGNUTLS
@@ -816,7 +818,9 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 	if (!cl.msg.ticket.id[0]) {
 		/* If the loaded configuration has only a single ticket defined, use that. */
 		if (conf->ticket_count == 1) {
-			strncpy(cl.msg.ticket.id, conf->ticket[0].name,
+			const struct ticket_config *tk = g_slist_nth_data(conf->tickets, 0);
+
+			strncpy(cl.msg.ticket.id, tk->name,
 				sizeof(cl.msg.ticket.id));
 		} else {
 			log_error("No ticket given.");
@@ -1624,8 +1628,9 @@ do_attr(struct booth_config **conf)
 	if (!cl.attr_msg.attr.tkt_id[0]) {
 		/* If the loaded configuration has only a single ticket defined, use that. */
 		if ((*conf)->ticket_count == 1) {
-			strncpy(cl.attr_msg.attr.tkt_id,
-			        (*conf)->ticket[0].name,
+			const struct ticket_config *tk = g_slist_nth_data((*conf)->tickets, 0);
+
+			strncpy(cl.attr_msg.attr.tkt_id, tk->name,
 			        sizeof(cl.attr_msg.attr.tkt_id));
 		} else {
 			log_error("No ticket given.");

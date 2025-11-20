@@ -30,6 +30,9 @@
 #include <errno.h>
 #include <string.h>
 #include <netdb.h>
+
+#include <glib.h>	    // g_slist_*
+
 #include "booth.h"
 #include "config.h"
 #include "raft.h"
@@ -42,35 +45,9 @@ void
 free_booth_config(struct booth_config *conf)
 {
     if (conf != NULL) {
-        free(conf->ticket);
+        g_slist_free_full(conf->tickets, free);
         free(conf);
     }
-}
-
-static int
-ticket_realloc(struct booth_config *conf)
-{
-	const int added = 5;
-	int had, want;
-	void *p;
-
-	assert(conf != NULL);
-
-	had = conf->ticket_allocated;
-	want = had + added;
-
-	p = realloc(conf->ticket, sizeof(struct ticket_config) * want);
-	if (!p) {
-		log_error("can't alloc more tickets");
-		return -ENOMEM;
-	}
-
-	conf->ticket = p;
-	memset(conf->ticket + had, 0,
-	       sizeof(struct ticket_config) * added);
-	conf->ticket_allocated = want;
-
-	return 0;
 }
 
 static void
@@ -278,21 +255,9 @@ static int
 add_ticket(struct booth_config *conf, const char *name,
            struct ticket_config **tkp, const struct ticket_config *def)
 {
-	int rv;
-	struct ticket_config *tk;
+	struct ticket_config *tk = NULL;
 
 	assert(conf != NULL);
-
-	if (conf->ticket_count == conf->ticket_allocated) {
-		rv = ticket_realloc(conf);
-		if (rv < 0) {
-			return rv;
-		}
-	}
-
-
-	tk = conf->ticket + conf->ticket_count;
-	conf->ticket_count++;
 
 	if (!valid_ticket_name(name)) {
 		log_error("ticket name \"%s\" too long.", name);
@@ -309,6 +274,12 @@ add_ticket(struct booth_config *conf, const char *name,
 		return -EINVAL;
 	}
 
+	tk = calloc(1, sizeof(struct ticket_config));
+	if (tk == NULL) {
+		log_error("Failed to allocate new ticket %s");
+		return -ENOMEM;
+	}
+
 	strcpy(tk->name, name);
 	tk->timeout = def->timeout;
 	tk->term_duration = def->term_duration;
@@ -316,8 +287,12 @@ add_ticket(struct booth_config *conf, const char *name,
 	memcpy(tk->weight, def->weight, sizeof(tk->weight));
 	tk->mode = def->mode;
 
+	conf->tickets = g_slist_append(conf->tickets, tk);
+	conf->ticket_count++;
+
 	if (tkp)
 		*tkp = tk;
+
 	return 0;
 }
 
@@ -588,15 +563,12 @@ read_config(struct booth_config **conf, const char *path, int type)
 		return -1;
 	}
 
-	*conf = malloc(sizeof(struct booth_config)
-			+ TICKET_ALLOC * sizeof(struct ticket_config));
+	*conf = calloc(1, sizeof(struct booth_config));
 	if (*conf == NULL) {
 		fclose(fp);
 		log_error("failed to alloc memory for booth config");
 		return -ENOMEM;
 	}
-	memset(*conf, 0, sizeof(struct booth_config)
-			+ TICKET_ALLOC * sizeof(struct ticket_config));
 	ticket_size = TICKET_ALLOC;
 
 

@@ -28,6 +28,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <time.h>
+
+#include <glib.h>		    // GSList
+
 #ifndef RANGE2RANDOM_GLIB
 #include <clplumbing/cl_random.h>
 #else
@@ -63,8 +66,8 @@ booth__foreach_ticket(struct booth_config *conf,
                       bool (*fn)(struct ticket_config *, void *),
                       void *user_data)
 {
-    for (int i = 0; i < conf->ticket_count; i++) {
-        struct ticket_config *ticket = &conf->ticket[i];
+    for (GSList *iter = conf->tickets; iter != NULL; iter = iter->next) {
+        struct ticket_config *ticket = iter->data;
 
         if (!fn(ticket, user_data)) {
             return false;
@@ -90,8 +93,8 @@ booth__foreach_const_ticket(const struct booth_config *conf,
                             bool (*fn)(const struct ticket_config *, void *),
                             void *user_data)
 {
-    for (int i = 0; i < conf->ticket_count; i++) {
-        const struct ticket_config *ticket = &conf->ticket[i];
+    for (const GSList *iter = conf->tickets; iter != NULL; iter = iter->next) {
+        const struct ticket_config *ticket = iter->data;
 
         if (!fn(ticket, user_data)) {
             return false;

@@ -24,6 +24,8 @@
 #include <stdint.h>
 #include <sys/stat.h>
 
+#include <glib.h>       // GSList
+
 #include "booth.h"
 #include "timer.h"
 #include "raft.h"
@@ -331,7 +333,7 @@ struct booth_config {
 
     int ticket_count;
     int ticket_allocated;
-    struct ticket_config *ticket;
+    GSList *tickets;        // struct ticket_config *
 };
 
 void free_booth_config(struct booth_config *conf);

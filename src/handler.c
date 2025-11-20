@@ -27,6 +27,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <time.h>
+
+#include <glib.h>	    // GSList
+
 #include "ticket.h"
 #include "config.h"
 #include "inline-fn.h"
