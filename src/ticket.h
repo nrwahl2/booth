@@ -34,12 +34,6 @@ extern int TIME_RES;
 #define DEFAULT_TICKET_TIMEOUT	(5*TIME_RES)
 #define DEFAULT_RETRIES			10
 
-
-#define FOREACH_TICKET(b_, i_, t_) \
-	for (i_ = 0; \
-	     (t_ = (b_)->ticket + i_, i_ < (b_)->ticket_count); \
-	     i_++)
-
 bool booth__foreach_ticket(struct booth_config *conf,
                            bool (*fn)(struct ticket_config *, void *),
                            void *user_data);
