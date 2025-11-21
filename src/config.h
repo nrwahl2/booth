@@ -59,8 +59,6 @@ typedef enum {
 	EXTPROG_IGNORE,
 } extprog_state_e;
 
-#define tk_test tk->clu_test
-
 typedef enum {
 	ATTR_OP_EQ = 1,
 	ATTR_OP_NE,

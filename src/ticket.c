@@ -404,11 +404,11 @@ do_ext_prog(struct booth_config *conf, struct ticket_config *tk,
 {
 	int rv = 0;
 
-	if (!tk_test.path) {
+	if (!tk->clu_test.path) {
 		return 0;
 	}
 
-	switch(tk_test.progstate) {
+	switch(tk->clu_test.progstate) {
 	case EXTPROG_IDLE:
 		rv = run_handler(conf, tk);
 		if (rv == RUNCMD_ERR) {

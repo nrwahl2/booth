@@ -86,7 +86,7 @@ run_ext_prog(const struct booth_config *conf, struct ticket_config *tk,
 	}
 	closefiles(); /* don't leak open files */
 	tk_log_debug("running handler %s", prog);
-	execv(prog, tk_test.argv);
+	execv(prog, tk->clu_test.argv);
 	tk_log_error("%s: execv failed (%s)", prog, strerror(errno));
 	_exit(1);
 }
@@ -126,7 +126,7 @@ test_exit_status(struct ticket_config *tk, char *prog, int status, int log_msg)
 static void
 reset_test_state(struct ticket_config *tk)
 {
-	tk_test.pid = 0;
+	tk->clu_test.pid = 0;
 	set_progstate(tk, EXTPROG_IDLE);
 }
 
@@ -135,7 +135,8 @@ tk_test_exit_status(struct ticket_config *tk)
 {
 	int rv;
 
-	rv = test_exit_status(tk, tk_test.path, tk_test.status, !tk_test.is_dir);
+	rv = test_exit_status(tk, tk->clu_test.path, tk->clu_test.status,
+			      !tk->clu_test.is_dir);
 	reset_test_state(tk);
 	return rv;
 }
@@ -203,18 +204,18 @@ ext_prog_timeout(struct ticket_config *tk)
 int
 is_ext_prog_running(struct ticket_config *tk)
 {
-	if (!tk_test.path)
+	if (!tk->clu_test.path)
 		return 0;
-	return (tk_test.pid > 0 && tk_test.progstate == EXTPROG_RUNNING);
+	return (tk->clu_test.pid > 0) && (tk->clu_test.progstate == EXTPROG_RUNNING);
 }
 
 void
 ignore_ext_test(struct ticket_config *tk)
 {
 	if (is_ext_prog_running(tk)) {
-		(void)kill(tk_test.pid, SIGTERM);
+		(void)kill(tk->clu_test.pid, SIGTERM);
 		set_progstate(tk, EXTPROG_IGNORE);
-	} else if (tk_test.progstate == EXTPROG_EXITED) {
+	} else if (tk->clu_test.progstate == EXTPROG_EXITED) {
 		/* external prog exited, but the status not yet examined;
 		 * we're not interested in checking the status anymore */
 		reset_test_state(tk);
@@ -232,22 +233,22 @@ process_ext_dir(const struct booth_config *conf, struct ticket_config *tk)
 	signal(SIGCHLD, SIG_DFL);
 	signal(SIGUSR1, SIG_DFL);
 	signal(SIGINT, SIG_DFL);
-	tk_log_debug("running programs in directory %s", tk_test.path);
-	n_progs = scandir(tk_test.path, &proglist, prog_filter, alphasort);
+	tk_log_debug("running programs in directory %s", tk->clu_test.path);
+	n_progs = scandir(tk->clu_test.path, &proglist, prog_filter, alphasort);
 	if (n_progs == -1) {
-		tk_log_error("%s: scandir failed (%s)", tk_test.path, strerror(errno));
+		tk_log_error("%s: scandir failed (%s)", tk->clu_test.path, strerror(errno));
 		_exit(1);
 	}
 	for (i = 0; i < n_progs; i++) {
 		if (ignore_status)
 			break;
 		dp = proglist[i];
-		if (strlen(dp->d_name) + strlen(tk_test.path) + 1 > FILENAME_MAX) {
+		if (strlen(dp->d_name) + strlen(tk->clu_test.path) + 1 > FILENAME_MAX) {
 			tk_log_error("%s: name exceeds max length (%s)",
-				tk_test.path, dp->d_name);
+				tk->clu_test.path, dp->d_name);
 			_exit(1);
 		}
-		strcpy(prog, tk_test.path);
+		strcpy(prog, tk->clu_test.path);
 		strcat(prog, "/");
 		strcat(prog, dp->d_name);
 		switch(curr_pid=fork()) {
@@ -291,27 +292,27 @@ run_handler(const struct booth_config *conf, struct ticket_config *tk)
 	pid_t pid;
 	struct stat stbuf;
 
-	if (!tk_test.path)
+	if (!tk->clu_test.path)
 		return 0;
 
-	if (stat(tk_test.path, &stbuf)) {
-		tk_log_error("%s: stat failed (%s)", tk_test.path, strerror(errno));
+	if (stat(tk->clu_test.path, &stbuf)) {
+		tk_log_error("%s: stat failed (%s)", tk->clu_test.path, strerror(errno));
 		return RUNCMD_ERR;
 	}
-	tk_test.is_dir = (stbuf.st_mode & S_IFDIR);
+	tk->clu_test.is_dir = (stbuf.st_mode & S_IFDIR);
 
 	switch(pid=fork()) {
 	case -1:
 		log_error("fork: %s", strerror(errno));
 		return RUNCMD_ERR;
 	case 0: /* child */
-		if (tk_test.is_dir) {
+		if (tk->clu_test.is_dir) {
 			process_ext_dir(conf, tk);
 		} else {
-			run_ext_prog(conf, tk, tk_test.path);
+			run_ext_prog(conf, tk, tk->clu_test.path);
 		}
 	default: /* parent */
-		tk_test.pid = pid;
+		tk->clu_test.pid = pid;
 		set_progstate(tk, EXTPROG_RUNNING);
 		rv = RUNCMD_MORE; /* program runs */
 	}
