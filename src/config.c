@@ -39,8 +39,6 @@
 #include "ticket.h"
 #include "log.h"
 
-static int ticket_size = 0;
-
 void
 free_booth_config(struct booth_config *conf)
 {
@@ -569,8 +567,6 @@ read_config(struct booth_config **conf, const char *path, int type)
 		log_error("failed to alloc memory for booth config");
 		return -ENOMEM;
 	}
-	ticket_size = TICKET_ALLOC;
-
 
 	(*conf)->proto = UDP;
 	(*conf)->port = BOOTH_DEFAULT_PORT;
