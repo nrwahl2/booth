@@ -328,7 +328,7 @@ struct booth_config {
     gid_t gid;
 
     int site_count;
-    struct booth_site site[MAX_NODES];
+    struct booth_site sites[MAX_NODES];
 
     GSList *tickets;        // struct ticket_config *
 };

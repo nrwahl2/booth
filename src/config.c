@@ -117,14 +117,13 @@ add_site(struct booth_config *conf, char *addr_string, int type)
 		log_error("too many nodes");
 		return 1;
 	}
-	if (strnlen(addr_string, sizeof(conf->site[0].addr_string))
-			>= sizeof(conf->site[0].addr_string)) {
+	if (strnlen(addr_string, sizeof(conf->sites[0].addr_string))
+			>= sizeof(conf->sites[0].addr_string)) {
 		log_error("site address \"%s\" too long", addr_string);
 		return 1;
 	}
 
-	site = conf->site + conf->site_count;
-
+	site = &conf->sites[conf->site_count];
 	site->family = AF_INET;
 	site->type = type;
 
@@ -205,7 +204,7 @@ add_site(struct booth_config *conf, char *addr_string, int type)
 
 	/* Test for collisions with other sites */
 	for (i = 0; i < site->index; i++) {
-		if (conf->site[i].site_id == site->site_id) {
+		if (conf->sites[i].site_id == site->site_id) {
 			log_error("Got a site-ID collision. Please file a bug on https://github.com/ClusterLabs/booth/issues/new, attaching the configuration file.");
 			exit(1);
 		}
