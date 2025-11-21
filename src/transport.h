@@ -26,7 +26,6 @@
 typedef enum {
 	TCP = 1,
 	UDP,
-	SCTP,
 	TRANSPORT_ENTRIES,
 } transport_layer_t;
 

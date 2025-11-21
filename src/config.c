@@ -690,8 +690,6 @@ no_value:
 
 			if (strcasecmp(val, "UDP") == 0) {
 				(*conf)->proto = UDP;
-			} else if (strcasecmp(val, "SCTP") == 0) {
-				(*conf)->proto = SCTP;
 			} else {
 				(void)snprintf(error_str_buf, sizeof(error_str_buf),
 				    "invalid transport protocol \"%s\"", val);

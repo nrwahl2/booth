@@ -1063,37 +1063,8 @@ booth_udp_exit(void)
 	return 0;
 }
 
-/* SCTP transport layer has not been developed yet */
-static int
-booth_sctp_init(void *f __attribute__((unused)))
-{
-	return 0;
-}
-
-static int
-booth_sctp_send(struct booth_config *conf __attribute__((unused)),
-                struct booth_site *to __attribute__((unused)),
-                void *buf __attribute__((unused)),
-                int len __attribute__((unused)))
-{
-	return 0;
-}
-
-static int
-booth_sctp_broadcast(void *buf __attribute__((unused)),
-                     int len __attribute__((unused)))
-{
-	return 0;
-}
-
 static int
 return_0_booth_site(struct booth_site *v __attribute__((unused)))
-{
-	return 0;
-}
-
-static int
-return_0(void)
 {
 	return 0;
 }
@@ -1119,14 +1090,6 @@ const struct booth_transport booth_transport[TRANSPORT_ENTRIES] = {
 		.broadcast_auth = booth_udp_broadcast_auth,
 		.exit = booth_udp_exit
 	},
-	[SCTP] = {
-		.name = "SCTP",
-		.init = booth_sctp_init,
-		.open = return_0_booth_site,
-		.send = booth_sctp_send,
-		.broadcast = booth_sctp_broadcast,
-		.exit = return_0,
-	}
 };
 
 #if HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH
