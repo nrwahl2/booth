@@ -52,11 +52,6 @@ bool booth__foreach_const_ticket(const struct booth_config *conf,
                                             void *),
                                  void *user_data);
 
-#define FOREACH_NODE(b_, i_, n_) \
-	for (i_ = 0; \
-	     (n_ = &(b_)->sites[i_], i_ < (b_)->site_count); \
-	     i_++)
-
 #define set_leader(tk, who) do { \
 	if (who == NULL) { \
 		mark_ticket_as_revoked_from_leader(tk); \
