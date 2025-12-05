@@ -231,76 +231,48 @@ find_client_by_fd(int fd)
 	return -1;
 }
 
-static int
-format_peers(const struct booth_config *conf, char **pdata, unsigned int *len)
+static GString *
+format_peers(const struct booth_config *conf)
 {
-	const struct booth_site *s;
-	char *data, *cp;
-	char time_str[64];
-	int i, alloc;
+    const struct booth_site *s = NULL;
+    int i = 0;
+    GString *buf = g_string_sized_new(conf->site_count * 128);
 
-	*pdata = NULL;
-	*len = 0;
+    FOREACH_NODE(conf, i, s) {
+        char time_s[64] = { '\0', };
 
-	alloc = conf->site_count * (BOOTH_NAME_LEN + 256);
-	data = malloc(alloc);
-	if (!data)
-		return -ENOMEM;
+        if (s == local) {
+            continue;
+        }
 
-	cp = data;
-	FOREACH_NODE(conf, i, s) {
-		if (s == local)
-			continue;
-		strftime(time_str, sizeof(time_str), "%F %T",
-			localtime(&s->last_recv));
-		cp += snprintf(cp,
-				alloc - (cp - data),
-				"%-12s %s, last recv: %s\n",
-				type_to_string(s->type),
-				s->addr_string,
-				time_str);
-		cp += snprintf(cp,
-				alloc - (cp - data),
-				"\tSent pkts:%u error:%u resends:%u\n",
-				s->sent_cnt,
-				s->sent_err_cnt,
-				s->resend_cnt);
-		cp += snprintf(cp,
-				alloc - (cp - data),
-				"\tRecv pkts:%u error:%u authfail:%u invalid:%u\n\n",
-				s->recv_cnt,
-				s->recv_err_cnt,
-				s->sec_cnt,
-				s->invalid_cnt);
-		if (alloc - (cp - data) <= 0) {
-			free(data);
-			return -ENOMEM;
-		}
-	}
+        strftime(time_s, sizeof(time_s), "%F %T", localtime(&s->last_recv));
 
-	*pdata = data;
-	*len = cp - data;
+        g_string_append_printf(buf,
+                               "%-12s %s, last recv: %s\n"
+                               "\tSent pkts:%u error:%u resends:%u\n"
+                               "\tRecv pkts:%u error:%u authfail:%u invalid:%u"
+                               "\n\n",
+                               type_to_string(s->type), s->addr_string, time_s,
+                               s->sent_cnt, s->sent_err_cnt, s->resend_cnt,
+                               s->recv_cnt, s->recv_err_cnt, s->sec_cnt,
+                               s->invalid_cnt);
+    }
 
-	return 0;
+    return buf;
 }
-
 
 void
 list_peers(struct booth_config *conf, int fd)
 {
-	char *data;
-	unsigned int olen;
-	struct boothc_hdr_msg hdr;
+    GString *data = format_peers(conf);
+    struct boothc_hdr_msg hdr = { 0, };
 
-	if (format_peers(conf, &data, &olen) < 0) {
-		goto out;
-	}
+    // Does not include terminating null byte
+    init_header(conf, &hdr.header, CL_LIST, 0, 0, RLT_SUCCESS, 0,
+                sizeof(hdr) + data->len);
+    send_header_plus(conf, fd, &hdr, data->str, data->len);
 
-	init_header(conf, &hdr.header, CL_LIST, 0, 0, RLT_SUCCESS, 0, sizeof(hdr) + olen);
-	send_header_plus(conf, fd, &hdr, data, olen);
-
-out:
-	free(data);
+    g_string_free(data, TRUE);
 }
 
 /* trim trailing spaces if the key is ascii
