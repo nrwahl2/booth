@@ -51,6 +51,33 @@ extern int TIME_RES;
 
 /*!
  * \internal
+ * \brief Call a function for each configured site, without modifying it
+ *
+ * \param[in]     conf       Booth configuration
+ * \param[in]     fn         Function to call for each site in \p conf (returns
+ *                           \c true to continue iterating over the rest of the
+ *                           sites, or \c false to stop)
+ * \param[in,out] user_data  User data to pass to \p fn
+ *
+ * \return \c false if any \p fn call returned \c false, or \c true otherwise
+ */
+bool
+booth__foreach_const_site(const struct booth_config *conf,
+                          bool (*fn)(const struct booth_site *, void *),
+                          void *user_data)
+{
+    for (int i = 0; i < conf->site_count; i++) {
+        const struct booth_site *site = &conf->sites[i];
+
+        if (!fn(site, user_data)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/*!
+ * \internal
  * \brief Call a function for each configured ticket
  *
  * \param[in,out] conf       Booth configuration
