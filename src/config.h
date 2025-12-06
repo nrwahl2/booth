@@ -20,8 +20,10 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/stat.h>
+
 #include "booth.h"
 #include "timer.h"
 #include "raft.h"
@@ -114,7 +116,7 @@ struct ticket_config {
 	 * acquire the ticket */
 	struct clu_test {
 		char *path;
-		int is_dir;
+		bool is_dir;
 		char *argv[MAX_ARGS];
 		pid_t pid;
 		int status; /* child exit status */
