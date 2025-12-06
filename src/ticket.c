@@ -474,34 +474,34 @@ list_ticket(struct booth_config *conf, char **pdata)
 	GString *s = g_string_sized_new(BUFSIZ);
 	struct ticket_config *tk;
 	struct booth_site *site;
-	char timeout_str[64];
 	gchar *pending_str = NULL;
 	int i, site_index;
-	time_t ts;
 
 	FOREACH_TICKET(conf, i, tk) {
+		char timeout_str[64] = "INF";
+
+		g_string_append_printf(s, "ticket: %s, leader: %s", tk->name,
+				       ticket_leader_string(tk));
+
 		if (!is_manual(tk) && is_time_set(&tk->term_expires)) {
 			/* Manual tickets doesn't have term_expires defined */
-			ts = wall_ts(&tk->term_expires);
+			time_s ts = wall_ts(&tk->term_expires);
+
 			strftime(timeout_str, sizeof(timeout_str), "%F %T",
 				 localtime(&ts));
-		} else {
-			strcpy(timeout_str, "INF");
 		}
 
 		if (tk->leader == local && is_time_set(&tk->delay_commit) &&
 		    !is_past(&tk->delay_commit)) {
-			char until_str[64];
 
-			ts = wall_ts(&tk->delay_commit);
+			char until_str[64] = { '\0', };
+			time_t ts = wall_ts(&tk->delay_commit);
+
 			strftime(until_str, sizeof(until_str), "%F %T",
 				 localtime(&ts));
 			pending_str = g_strdup_printf(" (commit pending until %s)",
 				                      until_str);
 		}
-
-		g_string_append_printf(s, "ticket: %s, leader: %s", tk->name,
-				       ticket_leader_string(tk));
 
 		if (is_owned(tk)) {
 			g_string_append_printf(s, ", expires: %s", timeout_str);
