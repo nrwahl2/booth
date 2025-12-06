@@ -64,14 +64,14 @@ bool booth__foreach_ticket(struct booth_config *conf,
 
 #define mark_ticket_as_granted(tk, who) do { \
 	if (is_manual(tk) && (who->index > -1)) { \
-		tk->sites_where_granted[who->index] = 1; \
+		tk->sites_where_granted[who->index] = true; \
 		tk_log_debug("manual ticket marked as granted to %s", ticket_leader_string(tk)); \
 	} \
 } while(0)
 
 #define mark_ticket_as_revoked(tk, who) do { \
 	if (is_manual(tk) && who && (who->index > -1)) { \
-		tk->sites_where_granted[who->index] = 0; \
+		tk->sites_where_granted[who->index] = false; \
 		tk_log_debug("manual ticket marked as revoked from %s", site_string(who)); \
 	} \
 } while(0)

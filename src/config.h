@@ -164,18 +164,16 @@ struct ticket_config {
 	 * and notifying the user about the issue.
 	 *
 	 * Possible values for every site:
-	 *  0: the site does not claim to be the leader
-	 *  1: the site considers itself a leader and
-	 *     is sending or used to send heartbeat messages
+	 *  false: the site does not claim to be the leader
+	 *  true: the site considers itself a leader and is sending or used to send
+	 *        heartbeat messages
 	 *
-	 * The site will be marked as '1' until this site
-	 * receives revoke confirmation.
+	 * The site will be set to true until it receives revoke confirmation.
 	 *
-	 * If more than one site has '1', the geo cluster is
-	 * considered to have multiple leadership and proper
-	 * warning are generated.
+	 * If more than one site is set to true, the geo cluster is considered to
+	 * have multiple leadership and proper warnings are generated.
 	 */
-	int sites_where_granted[MAX_NODES];
+	bool sites_where_granted[MAX_NODES];
 
 	/** Timestamp of leadership expiration */
 	timetype term_expires;

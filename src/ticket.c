@@ -460,7 +460,9 @@ number_sites_marked_as_granted(struct booth_config *conf,
 	struct booth_site *ignored __attribute__((unused));
 
 	FOREACH_NODE(conf, i, ignored) {
-		result += tk->sites_where_granted[i];
+		if (tk->sites_where_granted[i]) {
+			result++;
+		}
 	}
 
 	return result;
@@ -538,7 +540,7 @@ list_ticket(struct booth_config *conf, char **pdata)
 				       tk->name);
 
 		FOREACH_NODE(conf, site_index, site) {
-			if (tk->sites_where_granted[site_index] <= 0) {
+			if (!tk->sites_where_granted[site_index]) {
 				continue;
 			}
 
