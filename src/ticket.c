@@ -474,40 +474,39 @@ list_ticket(struct booth_config *conf, char **pdata)
 	GString *s = g_string_sized_new(BUFSIZ);
 	struct ticket_config *tk;
 	struct booth_site *site;
-	gchar *pending_str = NULL;
 	int i, site_index;
 
 	FOREACH_TICKET(conf, i, tk) {
-		char timeout_str[64] = "INF";
-
 		g_string_append_printf(s, "ticket: %s, leader: %s", tk->name,
 				       ticket_leader_string(tk));
 
-		if (!is_manual(tk) && is_time_set(&tk->term_expires)) {
-			/* Manual tickets doesn't have term_expires defined */
-			time_s ts = wall_ts(&tk->term_expires);
-
-			strftime(timeout_str, sizeof(timeout_str), "%F %T",
-				 localtime(&ts));
-		}
-
-		if (tk->leader == local && is_time_set(&tk->delay_commit) &&
-		    !is_past(&tk->delay_commit)) {
-
-			char until_str[64] = { '\0', };
-			time_t ts = wall_ts(&tk->delay_commit);
-
-			strftime(until_str, sizeof(until_str), "%F %T",
-				 localtime(&ts));
-			pending_str = g_strdup_printf(" (commit pending until %s)",
-				                      until_str);
-		}
-
 		if (is_owned(tk)) {
-			g_string_append_printf(s, ", expires: %s", timeout_str);
+			g_string_append(s, ", expires: ");
 
-			if (pending_str != NULL) {
-				g_string_append(s, pending_str);
+			if (!is_manual(tk) && is_time_set(&tk->term_expires)) {
+				// Manual tickets don't have term_expires defined
+				char timeout_str[64] = { '\0', };
+				time_t ts = wall_ts(&tk->term_expires);
+
+				strftime(timeout_str, sizeof(timeout_str), "%F %T",
+					 localtime(&ts));
+				g_string_append(s, timeout_str);
+
+			} else {
+				g_string_append(s, "INF");
+			}
+
+			if ((tk->leader == local)
+				&& is_time_set(&tk->delay_commit)
+				&& !is_past(&tk->delay_commit)) {
+
+				char until_str[64] = { '\0', };
+				time_t ts = wall_ts(&tk->delay_commit);
+
+				strftime(until_str, sizeof(until_str), "%F %T",
+					 localtime(&ts));
+				g_string_append_printf(s, " (commit pending until %s)",
+						       until_str);
 			}
 		}
 
@@ -515,9 +514,7 @@ list_ticket(struct booth_config *conf, char **pdata)
 			g_string_append(s, " [manual mode]");
 		}
 
-		g_string_append(s, "\n");
-
-		g_free(pending_str);
+		g_string_append_c(s, '\n');
 	}
 
 	FOREACH_TICKET(conf, i, tk) {
