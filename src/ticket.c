@@ -1012,30 +1012,22 @@ leader_update_ticket(struct booth_config *conf, struct ticket_config *tk)
 	return rv;
 }
 
-static void
-log_lost_servers(struct booth_config *conf, struct ticket_config *tk)
+static bool
+log_site_if_lost(const struct booth_site *site, void *user_data)
 {
-	struct booth_site *n;
-	int i;
+    struct ticket_config *ticket = user_data;
+    struct ticket_config *tk = ticket;  // tk_log_warn() uses this alias
 
-	if (tk->retry_number > 1) {
-		/* log those that we couldn't reach, but do
-		 * that only on the first retry
-		 */
-		return;
-	}
+    if ((ticket->acks_received & site->bitmask) != 0) {
+        // Site is not lost; continue checking the rest of the sites
+        return true;
+    }
 
-	FOREACH_NODE(conf, i, n) {
-		if (tk->acks_received & n->bitmask) {
-			continue;
-		}
-
-		tk_log_warn("%s %s didn't acknowledge our %s, "
-			    "will retry %d times",
-			    (n->type == ARBITRATOR ? "arbitrator" : "site"),
-			    site_string(n), state_to_string(tk->last_request),
-			    tk->retries);
-	}
+    tk_log_warn("%s %s didn't acknowledge our %s, will retry %d times",
+                ((site->type == ARBITRATOR)? "arbitrator" : "site"),
+                site_string(site), state_to_string(ticket->last_request),
+                ticket->retries);
+    return true;
 }
 
 static void
@@ -1095,8 +1087,10 @@ handle_resends(struct booth_config *conf, struct ticket_config *tk)
 				    "only got %d answers",
 				    tk->retry_number, ack_cnt);
 		}
-	} else {
-		log_lost_servers(conf, tk);
+
+	} else if (tk->retry_number == 1) {
+		// Log only on the first retry
+		booth__foreach_const_site(conf, log_site_if_lost, tk);
 	}
 
 just_resend:
