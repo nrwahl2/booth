@@ -1052,28 +1052,44 @@ find_site_by_name(const struct booth_config *conf, const char *name,
     return !booth__foreach_const_site(conf, get_if_name_matches, &data);
 }
 
+struct get_if_id_matches_data {
+    const uint32_t id;
+    struct booth_site **match;
+};
+
+static bool
+get_if_id_matches(const struct booth_site *site, void *user_data)
+{
+    struct get_if_id_matches_data *data = user_data;
+
+    if (site->site_id == data->id) {
+        // Cast away const for output argument
+        *data->match = (struct booth_site *) site;
+        return false;
+    }
+
+    // Continue looking for a match
+    return true;
+}
+
 bool
-find_site_by_id(struct booth_config *conf, uint32_t id,
+find_site_by_id(const struct booth_config *conf, uint32_t id,
                 struct booth_site **node)
 {
-	struct booth_site *n;
-	int i;
+    struct get_if_id_matches_data data = {
+        .id = id,
+        .match = node,
+    };
 
-	assert((conf != NULL) && (node != NULL));
+    assert((conf != NULL) && (node != NULL));
 
-	if (id == NO_ONE) {
-		*node = no_leader;
-		return true;
-	}
+    if (id == NO_ONE) {
+        *node = no_leader;
+        return true;
+    }
 
-	FOREACH_NODE(conf, i, n) {
-		if (n->site_id == id) {
-			*node = n;
-			return true;
-		}
-	}
-
-	return false;
+    // get_if_id_matches() returns false if it found a match
+    return !booth__foreach_const_site(conf, get_if_id_matches, &data);
 }
 
 const char *
