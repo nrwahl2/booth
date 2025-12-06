@@ -522,20 +522,33 @@ do_revoke_ticket(struct booth_config *conf, struct ticket_config *tk)
 	}
 }
 
+struct num_sites_granted_data {
+    const struct ticket_config *ticket;
+    int count;
+};
+
+static bool
+count_site_if_granted(const struct booth_site *site, void *user_data)
+{
+    struct num_sites_granted_data *data = user_data;
+
+    if (data->ticket->sites_where_granted[site->index]) {
+        data->count++;
+    }
+    return true;
+}
+
 static int
 num_sites_granted(const struct booth_config *conf,
-                  const struct ticket_config *tk)
+                  const struct ticket_config *ticket)
 {
-	int i, result = 0;
-	const struct booth_site *ignored __attribute__((unused));
+    struct num_sites_granted_data data = {
+        .ticket = ticket,
+        .count = 0,
+    };
 
-	FOREACH_NODE(conf, i, ignored) {
-		if (tk->sites_where_granted[i]) {
-			result++;
-		}
-	}
-
-	return result;
+    booth__foreach_const_site(conf, count_site_if_granted, &data);
+    return data.count;
 }
 
 static bool
