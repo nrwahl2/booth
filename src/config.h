@@ -257,7 +257,7 @@ struct ticket_config {
 
 	/* don't log warnings unnecessarily
 	 */
-	int expect_more_rejects;
+	bool expect_more_rejects;
 	/** \name Needed while proposals are being done.
 	 * @{ */
 	/* Need to keep the previous valid ticket in case we moved to

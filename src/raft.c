@@ -340,7 +340,7 @@ answer_HEARTBEAT(struct booth_config *conf, struct ticket_config *tk,
 	}
 
 	/* got heartbeat, no rejects expected anymore */
-	tk->expect_more_rejects = 0;
+	tk->expect_more_rejects = false;
 
 	/* Needed? */
 	newer_term(tk, sender, leader, msg, 0);
@@ -540,7 +540,7 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 		 */
 		tk_log_warn("ticket was granted to us "
 				"(and we didn't know)");
-		tk->expect_more_rejects = 1;
+		tk->expect_more_rejects = true;
 		return 0;
 	}
 
@@ -551,7 +551,7 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 				site_string(leader)
 				);
 		set_leader(tk, leader);
-		tk->expect_more_rejects = 1;
+		tk->expect_more_rejects = true;
 		become_follower(conf, tk, msg);
 		return 0;
 	}
@@ -574,14 +574,14 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 		}
 		set_leader(tk, leader);
 		become_follower(conf, tk, msg);
-		tk->expect_more_rejects = 1;
+		tk->expect_more_rejects = true;
 		return 0;
 	}
 
 	if (tk->state == ST_CANDIDATE &&
 			rv == RLT_YOU_OUTDATED) {
 		set_leader(tk, leader);
-		tk->expect_more_rejects = 1;
+		tk->expect_more_rejects = true;
 		if (leader && leader != no_leader) {
 			tk_log_warn("our ticket is outdated, granted to %s",
 				site_string(leader));

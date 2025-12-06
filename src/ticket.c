@@ -637,7 +637,7 @@ update_ticket_state(const struct booth_config *conf, struct ticket_config *tk,
 			    site_string(sender));
 		/* there could be rejects coming from others; don't log
 		 * warnings unnecessarily */
-		tk->expect_more_rejects = 1;
+		tk->expect_more_rejects = true;
 	}
 
 	if (tk->leader == local || tk->is_granted) {
