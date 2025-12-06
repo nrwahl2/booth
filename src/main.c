@@ -231,41 +231,35 @@ find_client_by_fd(int fd)
 	return -1;
 }
 
-static GString *
-format_peers(const struct booth_config *conf)
+static bool
+format_peer(const struct booth_site *site, void *user_data)
 {
-    const struct booth_site *s = NULL;
-    int i = 0;
-    GString *buf = g_string_sized_new(conf->site_count * 128);
+    GString *buf = user_data;
+    char last[64] = { '\0', };
 
-    FOREACH_NODE(conf, i, s) {
-        char time_s[64] = { '\0', };
-
-        if (s == local) {
-            continue;
-        }
-
-        strftime(time_s, sizeof(time_s), "%F %T", localtime(&s->last_recv));
-
-        g_string_append_printf(buf,
-                               "%-12s %s, last recv: %s\n"
-                               "\tSent pkts:%u error:%u resends:%u\n"
-                               "\tRecv pkts:%u error:%u authfail:%u invalid:%u"
-                               "\n\n",
-                               type_to_string(s->type), s->addr_string, time_s,
-                               s->sent_cnt, s->sent_err_cnt, s->resend_cnt,
-                               s->recv_cnt, s->recv_err_cnt, s->sec_cnt,
-                               s->invalid_cnt);
+    if (site == local) {
+        return true;
     }
 
-    return buf;
+    strftime(last, sizeof(last), "%F %T", localtime(&site->last_recv));
+    g_string_append_printf(buf,
+                           "%-12s %s, last recv: %s\n"
+                           "\tSent pkts:%u error:%u resends:%u\n"
+                           "\tRecv pkts:%u error:%u authfail:%u invalid:%u\n\n",
+                           type_to_string(site->type), site->addr_string, last,
+                           site->sent_cnt, site->sent_err_cnt, site->resend_cnt,
+                           site->recv_cnt, site->recv_err_cnt, site->sec_cnt,
+                           site->invalid_cnt);
+    return true;
 }
 
 void
 list_peers(struct booth_config *conf, int fd)
 {
-    GString *data = format_peers(conf);
+    GString *data = g_string_sized_new(conf->site_count * 128);
     struct boothc_hdr_msg hdr = { 0, };
+
+    booth__foreach_const_site(conf, format_peer, data);
 
     // Does not include terminating null byte
     init_header(conf, &hdr.header, CL_LIST, 0, 0, RLT_SUCCESS, 0,
