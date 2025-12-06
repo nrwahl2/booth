@@ -1224,29 +1224,30 @@ out:
 	}
 }
 
-void
-process_tickets(struct booth_config *conf)
+bool
+booth__process_ticket(struct ticket_config *ticket, void *user_data)
 {
-	struct ticket_config *tk;
-	int i;
-	timetype last_cron;
+    struct booth_config *conf = user_data;
+    struct ticket_config *tk = ticket;      // Used by tk_log_debug()
+    timetype last_cron = { 0, };
 
-	FOREACH_TICKET(conf, i, tk) {
-		if (!has_extprog_exited(tk) &&
-		    is_time_set(&tk->next_cron) && !is_past(&tk->next_cron)) {
-			continue;
-		}
+    if (!has_extprog_exited(ticket)
+        && is_time_set(&ticket->next_cron) && !is_past(&ticket->next_cron)) {
 
-		tk_log_debug("ticket cron");
+        return true;
+    }
 
-		copy_time(&tk->next_cron, &last_cron);
-		ticket_cron(conf, tk);
+    tk_log_debug("ticket cron");
 
-		if (time_cmp(&last_cron, &tk->next_cron, ==)) {
-			tk_log_debug("nobody set ticket wakeup");
-			set_ticket_wakeup(tk);
-		}
-	}
+    copy_time(&ticket->next_cron, &last_cron);
+    ticket_cron(conf, ticket);
+
+    if (time_cmp(&last_cron, &ticket->next_cron, ==)) {
+        tk_log_debug("nobody set ticket wakeup");
+        set_ticket_wakeup(ticket);
+    }
+
+    return true;
 }
 
 void

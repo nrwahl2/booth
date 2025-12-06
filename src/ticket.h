@@ -185,11 +185,14 @@ int ticket_write(const struct booth_config *conf, struct ticket_config *tk);
 
 /**
  * @internal
- * Mainloop of booth ticket handling
+ * Main booth ticket handling
  *
- * @param[in,out] conf config object to refer to
+ * @param[in,out] ticket     Ticket
+ * @param[in,out] user_data  Configuration (<tt>struct booth_config *</tt>)
+ *
+ * @return \c true (to continue iterating)
  */
-void process_tickets(struct booth_config *conf);
+bool booth__process_ticket(struct ticket_config *ticket, void *user_data);
 
 /**
  * @internal

@@ -58,7 +58,7 @@
 
 /** Timeout value for poll().
  * Determines frequency of periodic jobs, eg. when send-retries are done.
- * See process_tickets(). */
+ * See booth__process_ticket(). */
 #define POLL_TIMEOUT	100
 
 

@@ -579,7 +579,7 @@ loop(struct booth_config *conf, int fd)
 			}
 		}
 
-		process_tickets(conf);
+		booth__foreach_ticket(conf, booth__process_ticket, conf);
 
 		if (process_signals(conf) != 0) {
 			return 0;
