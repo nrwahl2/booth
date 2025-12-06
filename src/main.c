@@ -385,7 +385,7 @@ setup_config(struct booth_config **conf, int type)
 
 	/* Set "local" pointer, ignoring errors. */
 	if (cl.type == DAEMON && cl.site[0]) {
-		if (!find_site_by_name(*conf, cl.site, &local, 1)) {
+		if (!find_site_by_name(*conf, cl.site, &local)) {
 			log_error("Cannot find \"%s\" in the configuration.",
 					cl.site);
 			return -EINVAL;
@@ -687,7 +687,7 @@ query_get_string_answer(struct booth_config *conf, cmd_request_t cmd)
 
 	if (!*cl.site)
 		site = local;
-	else if (!find_site_by_name(conf, cl.site, &site, 1)) {
+	else if (!find_site_by_name(conf, cl.site, &site)) {
 		log_error("cannot find site \"%s\"", cl.site);
 		rv = ENOENT;
 		goto out;
@@ -761,7 +761,7 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 	if (!*cl.site)
 		site = local;
 	else {
-		if (!find_site_by_name(conf, cl.site, &site, 1)) {
+		if (!find_site_by_name(conf, cl.site, &site)) {
 			log_error("Site \"%s\" not configured.", cl.site);
 			goto out_close;
 		}

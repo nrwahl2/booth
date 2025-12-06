@@ -370,12 +370,11 @@ int check_config(struct booth_config *conf, int type);
  * @param[in,out] conf config object to refer to
  * @param[in] site name to match against previously resolved host names
  * @param[out] node relevant tracked data when found
- * @param[in] any_type whether or not to consider also non-site members
  *
  * @return \c true if site was found, or \c false otherwise
  */
 bool find_site_by_name(struct booth_config *conf, const char *site,
-                       struct booth_site **node, int any_type);
+                       struct booth_site **node);
 
 
 /**

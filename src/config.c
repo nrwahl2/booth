@@ -1001,21 +1001,19 @@ get_other_site(const struct booth_config *conf, struct booth_site **node)
 
 bool
 find_site_by_name(struct booth_config *conf, const char *site,
-                  struct booth_site **node, int any_type)
+                  struct booth_site **node)
 {
 	struct booth_site *n;
 	int i;
 
-	if (conf == NULL) {
-		return false;
-	}
+	assert((conf != NULL) && (site != NULL) && (node != NULL));
 
 	if (!strcmp(site, OTHER_SITE)) {
 		return get_other_site(conf, node);
 	}
 
 	FOREACH_NODE(conf, i, n) {
-		if ((n->type == SITE || any_type) &&
+		if ((n->type == SITE) &&
 		    strncmp(n->addr_string, site, sizeof(n->addr_string)) == 0) {
 			*node = n;
 			return true;

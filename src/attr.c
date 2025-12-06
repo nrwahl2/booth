@@ -163,7 +163,7 @@ do_attr_command(struct booth_config *conf, cmd_request_t cmd)
 	if (!*cl.site)
 		site = local;
 	else {
-		if (!find_site_by_name(conf, cl.site, &site, 1)) {
+		if (!find_site_by_name(conf, cl.site, &site)) {
 			log_error("Site \"%s\" not configured.", cl.site);
 			goto out_close;
 		}
