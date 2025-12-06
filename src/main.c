@@ -522,7 +522,7 @@ process_signals(struct booth_config *conf)
 	}
 	if (sig_chld_handler_called) {
 		sig_chld_handler_called = 0;
-		wait_child(conf, SIGCHLD);
+		wait_child(conf);
 	}
 
 	return 0;

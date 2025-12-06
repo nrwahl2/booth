@@ -129,7 +129,7 @@ tk_test_exit_status(struct ticket_config *tk)
 }
 
 void
-wait_child(struct booth_config *conf, int sig)
+wait_child(struct booth_config *conf)
 {
 	int i, status;
 	struct ticket_config *tk;
