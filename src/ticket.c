@@ -1250,21 +1250,16 @@ booth__process_ticket(struct ticket_config *ticket, void *user_data)
     return true;
 }
 
-void
-tickets_log_info(struct booth_config *conf)
+bool
+booth__log_ticket_info(struct ticket_config *ticket, void *user_data)
 {
-	struct ticket_config *tk;
-	int i;
-	time_t ts;
+    time_t ts = wall_ts(&ticket->term_expires);
+    struct ticket_config *tk = ticket;  // Used by tk_log_info()
 
-	FOREACH_TICKET(conf, i, tk) {
-		ts = wall_ts(&tk->term_expires);
-		tk_log_info("state '%s' term %d leader %s expires %-24.24s",
-			    state_to_string(tk->state),
-			    tk->current_term,
-			    ticket_leader_string(tk),
-			    ctime(&ts));
-	}
+    tk_log_info("state '%s' term %d leader %s expires %-24.24s",
+                state_to_string(ticket->state), ticket->current_term,
+                ticket_leader_string(ticket), ctime(&ts));
+    return true;
 }
 
 static void

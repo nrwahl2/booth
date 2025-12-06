@@ -196,11 +196,14 @@ bool booth__process_ticket(struct ticket_config *ticket, void *user_data);
 
 /**
  * @internal
- * Log properties of all tickets
+ * Log properties of a ticket
  *
- * @param[in,out] conf config object to refer to
+ * @param[in,out] ticket     Ticket
+ * @param[in]     user_data  Ignored
+ *
+ * @return \c true (to continue iterating)
  */
-void tickets_log_info(struct booth_config *conf);
+bool booth__log_ticket_info(struct ticket_config *ticket, void *user_data);
 
 char *state_to_string(uint32_t state_ho);
 

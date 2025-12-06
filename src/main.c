@@ -518,7 +518,7 @@ process_signals(struct booth_config *conf)
 	}
 	if (sig_usr1_handler_called) {
 		sig_usr1_handler_called = 0;
-		tickets_log_info(conf);
+		booth__foreach_ticket(conf, booth__log_ticket_info, NULL);
 	}
 	if (sig_chld_handler_called) {
 		sig_chld_handler_called = 0;
