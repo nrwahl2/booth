@@ -150,37 +150,65 @@ won_elections(struct booth_config *conf, struct ticket_config *tk)
 	tk->ticket_updated = 0;
 }
 
+struct is_tie_data {
+    const struct ticket_config *ticket;
+    int count[MAX_NODES];
+    int max_votes;
+    bool found_winner;
+};
+
+static bool
+update_max_votes(const struct booth_site *site, void *user_data)
+{
+    struct is_tie_data *data = user_data;
+    const struct booth_site *vote = data->ticket->votes_for[site->index];
+
+    if (vote == NULL) {
+        return true;
+    }
+    data->count[vote->index]++;
+    data->max_votes = max(data->max_votes, data->count[vote->index]);
+    return true;
+}
+
+static bool
+check_tie_site(const struct booth_site *site, void *user_data)
+{
+    struct is_tie_data *data = user_data;
+
+    if (data->count[site->index] == data->max_votes) {
+        // This site is a winner (has the max number of votes)
+
+        if (data->found_winner) {
+            // Tie found (already found a site with the max number of votes)
+            return false;
+        }
+        data->found_winner = true;
+    }
+
+    // No tie found, so check the rest of the sites
+    return true;
+}
 
 /* if more than one member got the same (and maximum within that
  * election) number of votes, then that is a tie
  */
-static int
-is_tie(struct booth_config *conf, struct ticket_config *tk)
+static bool
+is_tie(const struct booth_config *conf, const struct ticket_config *ticket)
 {
-	int i;
-	struct booth_site *v;
-	struct booth_site *ignored __attribute__((unused));
-	int count[MAX_NODES] = { 0, };
-	int max_votes = 0, max_cnt = 0;
+    struct is_tie_data data = {
+        .ticket = ticket,
+        .count = { 0, },
+        .max_votes = 0,
+        .found_winner = false,
+    };
 
-	assert(conf != NULL);
+    assert(conf != NULL);
 
-	FOREACH_NODE(conf, i, ignored) {
-		v = tk->votes_for[i];
-		if (!v) {
-			continue;
-		}
-		count[v->index]++;
-		max_votes = max(max_votes, count[v->index]);
-	}
+    booth__foreach_const_site(conf, update_max_votes, &data);
 
-	FOREACH_NODE(conf, i, ignored) {
-		if (count[i] == max_votes) {
-			max_cnt++;
-		}
-	}
-
-	return max_cnt > 1;
+    // check_tie_site() returns false (to stop iterating) if a tie was found
+    return !booth__foreach_const_site(conf, check_tie_site, &data);
 }
 
 static struct booth_site *
