@@ -475,7 +475,7 @@ list_ticket(struct booth_config *conf, char **pdata)
 	struct ticket_config *tk;
 	struct booth_site *site;
 	char timeout_str[64];
-	char *pending_str = NULL;
+	gchar *pending_str = NULL;
 	int i, site_index;
 	time_t ts;
 
@@ -492,18 +492,12 @@ list_ticket(struct booth_config *conf, char **pdata)
 		if (tk->leader == local && is_time_set(&tk->delay_commit) &&
 		    !is_past(&tk->delay_commit)) {
 			char until_str[64];
-			int rc;
 
 			ts = wall_ts(&tk->delay_commit);
 			strftime(until_str, sizeof(until_str), "%F %T",
 				 localtime(&ts));
-			rc = asprintf(&pending_str, " (commit pending until %s)",
-				      until_str);
-
-			if (rc < 0) {
-				g_string_free(s, TRUE);
-				return -ENOMEM;
-			}
+			pending_str = g_strdup_printf(" (commit pending until %s)",
+				                      until_str);
 		}
 
 		g_string_append_printf(s, "ticket: %s, leader: %s", tk->name,
@@ -523,10 +517,7 @@ list_ticket(struct booth_config *conf, char **pdata)
 
 		g_string_append(s, "\n");
 
-		if (pending_str != NULL) {
-			free(pending_str);
-			pending_str = NULL;
-		}
+		g_free(pending_str);
 	}
 
 	FOREACH_TICKET(conf, i, tk) {
