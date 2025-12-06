@@ -249,7 +249,7 @@ struct ticket_config {
 	 * the UPDATE RPC (for followers) and on expiration update
 	 * (for leaders)
 	*/
-	int update_cib;
+	bool update_cib;
 
 	/* Is this ticket in election?
 	*/

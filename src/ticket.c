@@ -195,7 +195,7 @@ ticket_write(const struct booth_config *conf, struct ticket_config *tk)
 		pcmk_handler.revoke_ticket(conf, tk);
 	}
 
-	tk->update_cib = 0;
+	tk->update_cib = false;
 	return 0;
 }
 
@@ -702,7 +702,7 @@ setup_ticket(struct booth_config *conf)
 				update_ticket_state(conf, tk, NULL);
 			}
 
-			tk->update_cib = 1;
+			tk->update_cib = true;
 		}
 
 		tk_log_info("broadcasting state query");
