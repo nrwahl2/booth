@@ -976,37 +976,36 @@ g_inval:
 }
 
 static bool
-get_other_site(const struct booth_config *conf, struct booth_site **node)
+get_if_other_site(const struct booth_site *site, void *user_data)
 {
-	const struct booth_site *n = NULL;
-	int i = 0;
+    struct booth_site **other_site = user_data;
 
-	*node = NULL;
+    if ((site == local) || (site->type != SITE)) {
+        // Continue looking for the non-local site in a two-site configuration
+        return true;
+    }
 
-	FOREACH_NODE(conf, i, n) {
-		if ((n == local) || (n->type != SITE)) {
-			continue;
-		}
+    if (*other_site != NULL) {
+        /* *other_site was set during a previous iteration, so there are more
+         * than two sites. OTHER_SITE is supported only in two-site
+         * configurations.
+         *
+         * We can't rely on conf->site_count, because it includes sites with
+         * type other than SITE.
+         *
+         * Return false to stop looking and indicate that there is no valid
+         * OTHER_SITE.
+         */
+        return false;
+    }
 
-		if (*node != NULL) {
-			/* *node was set during a previous iteration, so there
-			 * are more than two sites. OTHER_SITE is supported only
-			 * in two-site configurations.
-			 *
-			 * We can't rely on conf->site_count, because it
-			 * includes sites with type other than SITE.
-			 */
-			return false;
-		}
+    // Cast away const for output argument
+    *other_site = (struct booth_site *) site;
 
-		// Cast away const for output argument
-		*node = (struct booth_site *) n;
-	}
-
-	/* If *node is set after the loop, then exactly one non-local site was
-	 * found
-	 */
-	return (*node != NULL);
+    /* Keep looking. If there is another non-local site, we will return false.
+     * See comment above.
+     */
+    return true;
 }
 
 bool
@@ -1018,8 +1017,14 @@ find_site_by_name(struct booth_config *conf, const char *site,
 
 	assert((conf != NULL) && (site != NULL) && (node != NULL));
 
-	if (!strcmp(site, OTHER_SITE)) {
-		return get_other_site(conf, node);
+	if (strcmp(site, OTHER_SITE) == 0) {
+		/* get_if_other_site() returns true if zero or one non-local
+		 * site is found. If it returns true and *node is set, then
+		 * *node is OTHER_SITE. Otherwise, there is no valid OTHER_SITE.
+		 */
+		return booth__foreach_const_site(conf, get_if_other_site,
+						 node)
+		       && (*node != NULL);
 	}
 
 	FOREACH_NODE(conf, i, n) {
