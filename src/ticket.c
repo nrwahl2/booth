@@ -138,8 +138,8 @@ find_ticket_by_name(const struct booth_config *conf, const char *name,
 	return false;
 }
 
-int
-check_ticket(struct booth_config *conf, char *ticket,
+bool
+check_ticket(const struct booth_config *conf, const char *name,
              struct ticket_config **found)
 {
 	if (found) {
@@ -147,14 +147,14 @@ check_ticket(struct booth_config *conf, char *ticket,
 	}
 
 	if (conf == NULL) {
-		return 0;
+		return false;
 	}
 
-	if (!check_max_len_valid(ticket, sizeof(conf->ticket[0].name))) {
-		return 0;
+	if (!check_max_len_valid(name, sizeof(conf->ticket[0].name))) {
+		return false;
 	}
 
-	return find_ticket_by_name(conf, ticket, found)? 1 : 0;
+	return find_ticket_by_name(conf, name, found);
 }
 
 /* is it safe to commit the grant?

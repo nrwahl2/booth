@@ -113,9 +113,10 @@ void disown_ticket(struct ticket_config *tk);
  * @param[in]     ticket name of the ticket to search for
  * @param[out]    found  place the reference here when found
  *
- * @return 0 on failure, see @find_ticket_by_name otherwise
+ * @return \c true on success or \c false on failure
  */
-int check_ticket(struct booth_config *conf, char *ticket, struct ticket_config **tc);
+bool check_ticket(const struct booth_config *conf, const char *name,
+                  struct ticket_config **tc);
 
 /**
  * @internal
