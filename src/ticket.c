@@ -72,6 +72,33 @@ booth__foreach_ticket(struct booth_config *conf,
     return true;
 }
 
+/*!
+ * \internal
+ * \brief Call a function for each configured ticket, without modifying it
+ *
+ * \param[in]     conf       Booth configuration
+ * \param[in]     fn         Function to call for each ticket in \p conf
+ *                           (returns \c true to continue iterating over the
+ *                           rest of the tickets, or \c false to stop)
+ * \param[in,out] user_data  User data to pass to \p fn
+ *
+ * \return \c false if any \p fn call returned \c false, or \c true otherwise
+ */
+bool
+booth__foreach_const_ticket(const struct booth_config *conf,
+                            bool (*fn)(const struct ticket_config *, void *),
+                            void *user_data)
+{
+    for (int i = 0; i < conf->ticket_count; i++) {
+        const struct ticket_config *ticket = &conf->ticket[i];
+
+        if (!fn(ticket, user_data)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* Untrusted input, must fit (incl. \0) in a buffer of max chars. */
 int
 check_max_len_valid(const char *s, int max)
