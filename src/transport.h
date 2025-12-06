@@ -70,7 +70,7 @@ extern const struct booth_transport booth_transport[TRANSPORT_ENTRIES];
  * @return 0 on success or negative value (-1 or -errno) on error
  */
 int find_myself(struct booth_config *conf, struct booth_site **me,
-		int fuzzy_allowed);
+                bool fuzzy_allowed);
 
 int check_boothc_header(struct boothc_header *data, int len_incl_data);
 

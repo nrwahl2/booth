@@ -74,7 +74,7 @@ parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 
 static void
 find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
-             const struct ifaddrmsg *ifa, int fuzzy_allowed,
+             const struct ifaddrmsg *ifa, bool fuzzy_allowed,
              struct booth_site **me, int *address_bits_matched)
 {
 	int i;
@@ -135,7 +135,7 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 
 static int
 _find_myself(struct booth_config *conf, int family, struct booth_site **mep,
-             int fuzzy_allowed)
+             bool fuzzy_allowed)
 {
 	int rc;
 	int fd;
@@ -265,10 +265,10 @@ _find_myself(struct booth_config *conf, int family, struct booth_site **mep,
 			 * then no other better non-exact address can be found.
 			 * But we can still try to find an exact match, so let us
 			 * call the function find_address with disabled searching of
-			 * similar addresses (fuzzy_allowed == 0)
+			 * similar addresses (fuzzy_allowed false)
 			 */
 			else if (ifa->ifa_prefixlen == address_bits_matched) {
-				find_address(conf, ipaddr, ifa, 0, &me,
+				find_address(conf, ipaddr, ifa, false, &me,
 					     &address_bits_matched);
 
 				if (me) {
@@ -299,7 +299,7 @@ found:
 
 int
 find_myself(struct booth_config *conf, struct booth_site **mep,
-            int fuzzy_allowed)
+            bool fuzzy_allowed)
 {
 	return _find_myself(conf, AF_INET6, mep, fuzzy_allowed) ||
 	       _find_myself(conf, AF_INET, mep, fuzzy_allowed);
