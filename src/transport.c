@@ -74,7 +74,7 @@ parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 
 static void
 find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
-             int family, int prefixlen, int fuzzy_allowed,
+             const struct ifaddrmsg *ifa, int fuzzy_allowed,
              struct booth_site **me, int *address_bits_matched)
 {
 	int i;
@@ -86,13 +86,13 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 
 	assert(conf != NULL);
 
-	bytes = prefixlen / 8;
-	bits_left = prefixlen % 8;
+	bytes = ifa->ifa_prefixlen / 8;
+	bits_left = ifa->ifa_prefixlen % 8;
 	/* One bit left to check means ignore 7 lowest bits. */
 	mask = ~( (1 << (8 - bits_left)) -1);
 
 	FOREACH_NODE(conf, i, node) {
-		if (family != node->family) {
+		if (ifa->ifa_family != node->family) {
 			continue;
 		}
 
@@ -127,7 +127,7 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 		ip_bits = ipaddr[bytes];
 		if (((node_bits ^ ip_bits) & mask) == 0) {
 			/* _At_least_ prefixlen bits matched. */
-			*address_bits_matched = prefixlen;
+			*address_bits_matched = ifa->ifa_prefixlen;
 			*me = node;
 		}
 	}
@@ -252,8 +252,7 @@ _find_myself(struct booth_config *conf, int family, struct booth_site **mep,
 			 * address (with the longest possible number of same bytes).
 			 */
 			if (ifa->ifa_prefixlen > address_bits_matched) {
-				find_address(conf, ipaddr, ifa->ifa_family,
-					     ifa->ifa_prefixlen, fuzzy_allowed,
+				find_address(conf, ipaddr, ifa, fuzzy_allowed,
 					     &me, &address_bits_matched);
 
 				if (me) {
@@ -269,9 +268,8 @@ _find_myself(struct booth_config *conf, int family, struct booth_site **mep,
 			 * similar addresses (fuzzy_allowed == 0)
 			 */
 			else if (ifa->ifa_prefixlen == address_bits_matched) {
-				find_address(conf, ipaddr, ifa->ifa_family,
-					     ifa->ifa_prefixlen, 0 /* fuzzy_allowed */,
-					     &me, &address_bits_matched);
+				find_address(conf, ipaddr, ifa, 0, &me,
+					     &address_bits_matched);
 
 				if (me) {
 					log_debug("found myself at %s (exact match)",
