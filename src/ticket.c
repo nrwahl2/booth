@@ -112,30 +112,42 @@ check_max_len_valid(const char *s, int max)
 	return 0;
 }
 
+struct check_ticket_name_data {
+    const char *name;
+    const struct ticket_config *found;
+};
+
+static bool
+check_ticket_name(const struct ticket_config *ticket, void *user_data)
+{
+    struct check_ticket_name_data *data = user_data;
+
+    if (strcmp(ticket->name, data->name) != 0) {
+        // No match, so keep iterating
+        return true;
+    }
+
+    // Match found, so stop iterating
+    data->found = ticket;
+    return false;
+}
+
 bool
 find_ticket_by_name(const struct booth_config *conf, const char *name,
                     struct ticket_config **found)
 {
-	struct ticket_config *tk;
-	int i;
+    struct check_ticket_name_data data = {
+        .name = name,
+        .found = NULL,
+    };
 
-	if (found) {
-		*found = NULL;
-	}
+    booth__foreach_const_ticket(conf, check_ticket_name, &data);
 
-	FOREACH_TICKET(conf, i, tk) {
-		if (strncmp(tk->name, name, sizeof(tk->name))) {
-			continue;
-		}
-
-		if (found) {
-			*found = tk;
-		}
-
-		return true;
-	}
-
-	return false;
+    if (found != NULL) {
+        // Cast away const
+        *found = (struct ticket_config *) data.found;
+    }
+    return (data.found != NULL);
 }
 
 bool
