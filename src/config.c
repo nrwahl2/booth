@@ -1008,34 +1008,48 @@ get_if_other_site(const struct booth_site *site, void *user_data)
     return true;
 }
 
+struct get_if_name_matches_data {
+    const char *name;
+    struct booth_site **match;
+};
+
+static bool
+get_if_name_matches(const struct booth_site *site, void *user_data)
+{
+    struct get_if_name_matches_data *data = user_data;
+
+    if ((site->type == SITE) && (strcmp(site->addr_string, data->name) == 0)) {
+        // Cast away const for output argument
+        *data->match = (struct booth_site *) site;
+        return false;
+    }
+
+    // Continue looking for a match
+    return true;
+}
+
 bool
-find_site_by_name(struct booth_config *conf, const char *site,
+find_site_by_name(const struct booth_config *conf, const char *name,
                   struct booth_site **node)
 {
-	struct booth_site *n;
-	int i;
+    struct get_if_name_matches_data data = {
+        .name = name,
+        .match = node,
+    };
 
-	assert((conf != NULL) && (site != NULL) && (node != NULL));
+    assert((conf != NULL) && (name != NULL) && (node != NULL));
 
-	if (strcmp(site, OTHER_SITE) == 0) {
-		/* get_if_other_site() returns true if zero or one non-local
-		 * site is found. If it returns true and *node is set, then
-		 * *node is OTHER_SITE. Otherwise, there is no valid OTHER_SITE.
-		 */
-		return booth__foreach_const_site(conf, get_if_other_site,
-						 node)
-		       && (*node != NULL);
-	}
+    if (strcmp(name, OTHER_SITE) == 0) {
+        /* get_if_other_site() returns true if zero or one non-local site is
+         * site is found. If it returns true and *node is set, then *node is
+         * *node is OTHER_SITE. Otherwise, there is no valid OTHER_SITE.
+         */
+        return booth__foreach_const_site(conf, get_if_other_site, node)
+               && (*node != NULL);
+    }
 
-	FOREACH_NODE(conf, i, n) {
-		if ((n->type == SITE) &&
-		    strncmp(n->addr_string, site, sizeof(n->addr_string)) == 0) {
-			*node = n;
-			return true;
-		}
-	}
-
-	return false;
+    // get_if_name_matches() returns false if it found a match
+    return !booth__foreach_const_site(conf, get_if_name_matches, &data);
 }
 
 int

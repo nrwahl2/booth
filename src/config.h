@@ -367,13 +367,13 @@ int check_config(struct booth_config *conf, int type);
  * @internal
  * Find site in booth configuration by resolved host name
  *
- * @param[in,out] conf config object to refer to
- * @param[in] site name to match against previously resolved host names
+ * @param[in] conf config object to refer to
+ * @param[in] name name to match against previously resolved host names
  * @param[out] node relevant tracked data when found
  *
  * @return \c true if site was found, or \c false otherwise
  */
-bool find_site_by_name(struct booth_config *conf, const char *site,
+bool find_site_by_name(const struct booth_config *conf, const char *name,
                        struct booth_site **node);
 
 
