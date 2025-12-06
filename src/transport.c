@@ -72,13 +72,7 @@ parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 	}
 }
 
-enum match_type {
-	NO_MATCH = 0,
-	FUZZY_MATCH,
-	EXACT_MATCH,
-};
-
-static int
+static void
 find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
              int family, int prefixlen, int fuzzy_allowed,
              struct booth_site **me, int *address_bits_matched)
@@ -89,7 +83,6 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 	unsigned char node_bits, ip_bits;
 	uint8_t *n_a;
 	int matched;
-	enum match_type did_match = NO_MATCH;
 
 	assert(conf != NULL);
 
@@ -114,7 +107,6 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 		if (matched == node->addrlen) {
 			*address_bits_matched = matched * 8;
 			*me = node;
-			did_match = EXACT_MATCH;
 			break;
 		}
 
@@ -135,15 +127,10 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 		ip_bits = ipaddr[bytes];
 		if (((node_bits ^ ip_bits) & mask) == 0) {
 			/* _At_least_ prefixlen bits matched. */
-			if (did_match < EXACT_MATCH) {
-				*address_bits_matched = prefixlen;
-				*me = node;
-				did_match = FUZZY_MATCH;
-			}
+			*address_bits_matched = prefixlen;
+			*me = node;
 		}
 	}
-
-	return did_match;
 }
 
 static int
