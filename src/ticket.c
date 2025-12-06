@@ -539,41 +539,56 @@ list_ticket(struct ticket_config *ticket, void *user_data)
     return true;
 }
 
+struct warn_if_multiple_grants_data {
+    const struct booth_config *conf;
+    GString *buf;
+};
+
+static bool
+warn_if_multiple_grants(const struct ticket_config *ticket, void *user_data)
+{
+    struct warn_if_multiple_grants_data *data = user_data;
+    int granted = num_sites_granted(data->conf, ticket);
+
+    int site_index = 0;
+    const struct booth_site *site = NULL;
+
+    if (granted <= 1) {
+        return true;
+    }
+
+    g_string_append_printf(data->buf,
+                           "\nWARNING: The ticket %s is granted to multiple "
+                           "sites: ",
+                           ticket->name);
+
+    FOREACH_NODE(data->conf, site_index, site) {
+        if (!ticket->sites_where_granted[site_index]) {
+            continue;
+        }
+
+        g_string_append(data->buf, site_string(site));
+
+        if (--granted > 0) {
+            g_string_append(data->buf, ", ");
+        }
+    }
+
+    g_string_append(data->buf, ". Revoke the ticket from the faulty sites.\n");
+    return true;
+}
+
 static int
 list_tickets(struct booth_config *conf, char **pdata)
 {
 	GString *buf = g_string_sized_new(BUFSIZ);
-	struct ticket_config *tk;
-	int i = 0;
+	struct warn_if_multiple_grants_data data = {
+		.conf = conf,
+		.buf = buf,
+	};
 
 	booth__foreach_ticket(conf, list_ticket, buf);
-
-	FOREACH_TICKET(conf, i, tk) {
-		struct booth_site *site = NULL;
-		int site_index = 0;
-		int multiple_grant_warning_length = num_sites_granted(conf, tk);
-
-		if (multiple_grant_warning_length <= 1) {
-			continue;
-		}
-
-		g_string_append_printf(buf, "\nWARNING: The ticket %s is granted to multiple sites: ",
-				       tk->name);
-
-		FOREACH_NODE(conf, site_index, site) {
-			if (!tk->sites_where_granted[site_index]) {
-				continue;
-			}
-
-			g_string_append(buf, site_string(site));
-
-			if (--multiple_grant_warning_length > 0) {
-				g_string_append(buf, ", ");
-			}
-		}
-
-		g_string_append(buf, ". Revoke the ticket from the faulty sites.\n");
-	}
+	booth__foreach_const_ticket(conf, warn_if_multiple_grants, &data);
 
 	*pdata = strdup(buf->str);
 	g_string_free(buf, TRUE);
