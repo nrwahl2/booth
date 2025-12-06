@@ -72,40 +72,53 @@ parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 	}
 }
 
+static const void *
+get_site_addr(const struct booth_site *site)
+{
+    switch (site->family) {
+        case AF_INET:
+            return &site->sa4.sin_addr;
+        case AF_INET6:
+            return &site->sa6.sin6_addr;
+        default:
+            return NULL;
+    }
+}
+
 static void
 find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
              const struct ifaddrmsg *ifa, bool fuzzy_allowed,
              struct booth_site **me, int *address_bits_matched)
 {
 	int i = 0;
-	struct booth_site *node = NULL;
+	struct booth_site *site = NULL;
 	int bytes = ifa->ifa_prefixlen / 8;
 	int bits_left = ifa->ifa_prefixlen % 8;
 
 	// One bit left to check means to ignore the seven lowest bits
 	int mask = ~((1 << (8 - bits_left)) - 1);
 
-	FOREACH_NODE(conf, i, node) {
+	FOREACH_NODE(conf, i, site) {
 		int matched = 0;
-		uint8_t *n_a = NULL;
-		unsigned char node_bits = 0;
+		const unsigned char *site_addr = NULL;
+		unsigned char site_bits = 0;
 		unsigned char ip_bits = 0;
 
-		if (ifa->ifa_family != node->family) {
+		if (ifa->ifa_family != site->family) {
 			continue;
 		}
 
-		n_a = node_to_addr_pointer(node);
+		site_addr = get_site_addr(site);
 
-		for (; matched < node->addrlen; matched++) {
-			if (ipaddr[matched] != n_a[matched]) {
+		for (; matched < site->addrlen; matched++) {
+			if (ipaddr[matched] != site_addr[matched]) {
 				break;
 			}
 		}
 
-		if (matched == node->addrlen) {
+		if (matched == site->addrlen) {
 			*address_bits_matched = matched * 8;
-			*me = node;
+			*me = site;
 			break;
 		}
 
@@ -122,12 +135,12 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
 			continue;
 		}
 
-		node_bits = n_a[bytes];
+		site_bits = site_addr[bytes];
 		ip_bits = ipaddr[bytes];
-		if (((node_bits ^ ip_bits) & mask) == 0) {
+		if (((site_bits ^ ip_bits) & mask) == 0) {
 			/* _At_least_ prefixlen bits matched. */
 			*address_bits_matched = ifa->ifa_prefixlen;
-			*me = node;
+			*me = site;
 		}
 	}
 }
