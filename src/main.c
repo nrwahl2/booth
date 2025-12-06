@@ -539,10 +539,7 @@ loop(struct booth_config *conf, int fd)
 	if (rv < 0)
 		goto fail;
 
-	rv = setup_ticket(conf);
-	if (rv < 0) {
-		goto fail;
-	}
+	booth__foreach_ticket(conf, booth__setup_ticket, conf);
 
 	rv = write_daemon_state(conf, fd, BOOTHD_STARTED);
 	if (rv != 0) {

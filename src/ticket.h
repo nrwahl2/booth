@@ -131,13 +131,14 @@ void update_ticket_state(const struct booth_config *conf,
 
 /**
  * @internal
- * Broadcast the initial state query
+ * Broadcast the initial state query for a ticket
  *
- * @param[in,out] conf config object to use as a starting point
+ * @param[in,out] ticket     Ticket
+ * @param[in,out] user_data  Configuration (<tt>struct booth_config *</tt>)
  *
- * @return 0 (for the time being)
+ * @return \c true (to continue iterating)
  */
-int setup_ticket(struct booth_config *conf);
+bool booth__setup_ticket(struct ticket_config *ticket, void *user_data);
 
 int check_max_len_valid(const char *s, int max);
 

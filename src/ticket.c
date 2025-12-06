@@ -688,31 +688,28 @@ update_ticket_state(const struct booth_config *conf, struct ticket_config *tk,
 	}
 }
 
-int
-setup_ticket(struct booth_config *conf)
+bool
+booth__setup_ticket(struct ticket_config *ticket, void *user_data)
 {
-	struct ticket_config *tk;
-	int i;
+    struct booth_config *conf = user_data;
+    struct ticket_config *tk = ticket;      // Used by tk_log_info()
 
-	FOREACH_TICKET(conf, i, tk) {
-		reset_ticket(tk);
+    reset_ticket(ticket);
 
-		if (local->type == SITE) {
-			if (!pcmk_handler.load_ticket(conf, tk)) {
-				update_ticket_state(conf, tk, NULL);
-			}
+    if (local->type == SITE) {
+        if (!pcmk_handler.load_ticket(conf, ticket)) {
+            update_ticket_state(conf, ticket, NULL);
+        }
 
-			tk->update_cib = true;
-		}
+        ticket->update_cib = true;
+    }
 
-		tk_log_info("broadcasting state query");
-		/* wait until all send their status (or the first
-		 * timeout) */
-		tk->start_postpone = true;
-		ticket_broadcast(conf, tk, OP_STATUS, OP_MY_INDEX, RLT_SUCCESS, 0);
-	}
+    // Wait until all send their status (or until the first timeout)
+    ticket->start_postpone = true;
 
-	return 0;
+    tk_log_info("broadcasting state query");
+    ticket_broadcast(conf, ticket, OP_STATUS, OP_MY_INDEX, RLT_SUCCESS, 0);
+    return true;
 }
 
 int
