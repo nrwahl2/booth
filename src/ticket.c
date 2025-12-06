@@ -1134,7 +1134,7 @@ next_action(struct booth_config *conf, struct ticket_config *tk)
 			} else {
 				/* we should restart elections in case nothing
 				* happens in the meantime */
-				tk->in_election = 0;
+				tk->in_election = false;
 				ticket_activate_timeout(tk);
 			}
 		} else {

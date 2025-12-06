@@ -253,7 +253,7 @@ struct ticket_config {
 
 	/* Is this ticket in election?
 	*/
-	int in_election;
+	bool in_election;
 
 	/* don't log warnings unnecessarily
 	 */

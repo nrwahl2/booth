@@ -115,7 +115,7 @@ become_follower(const struct booth_config *conf, struct ticket_config *tk,
 	copy_ticket_from_msg(tk, msg);
 	set_state(tk, ST_FOLLOWER);
 	time_reset(&tk->delay_commit);
-	tk->in_election = 0;
+	tk->in_election = false;
 	/* if we're following and the ticket was granted here
 	 * then commit to CIB right away (we're probably restarting)
 	 */
@@ -222,7 +222,7 @@ elections_end(struct booth_config *conf, struct ticket_config *tk)
 		tk_log_info("elections finished");
 	}
 
-	tk->in_election = 0;
+	tk->in_election = false;
 	new_leader = majority_votes(conf, tk);
 	if (new_leader == local) {
 		won_elections(conf, tk);
@@ -689,7 +689,7 @@ answer_REQ_VOTE(struct booth_config *conf, struct ticket_config *tk,
 
 	/* set this, so that we know not to send status for the
 	 * ticket */
-	tk->in_election = 1;
+	tk->in_election = true;
 
 	/* reset ticket's leader on not valid tickets */
 	if (!valid) {
@@ -777,7 +777,7 @@ new_election(struct booth_config *conf, struct ticket_config *tk,
 	}
 
 	set_future_time(&tk->election_end, tk->timeout);
-	tk->in_election = 1;
+	tk->in_election = true;
 
 	tk_log_info("starting new election (term=%d)",
 			tk->current_term);
