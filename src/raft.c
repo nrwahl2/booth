@@ -211,37 +211,59 @@ is_tie(const struct booth_config *conf, const struct ticket_config *ticket)
     return !booth__foreach_const_site(conf, check_tie_site, &data);
 }
 
-static struct booth_site *
-majority_votes(struct booth_config *conf, struct ticket_config *tk)
+struct majority_votes_data {
+    const struct booth_config *conf;
+    struct ticket_config *ticket; // Not modified but passed to term_time_left()
+    int count[MAX_NODES];
+    const struct booth_site *winner;
+};
+
+static bool
+check_majority_votes_site(const struct booth_site *site, void *user_data)
 {
-	int i, n;
-	struct booth_site *v;
-	struct booth_site *node;
-	int count[MAX_NODES] = { 0, };
+    struct majority_votes_data *data = user_data;
+    struct ticket_config *tk = data->ticket;    // Used by tk_log_debug()
+    const struct booth_site *vote = data->ticket->votes_for[site->index];
 
-	assert(conf != NULL);
+    if ((vote == NULL) || (vote == no_leader)) {
+        // Site didn't vote for anyone, so continue iterating
+        return true;
+    }
 
-	FOREACH_NODE(conf, i, node) {
-		v = tk->votes_for[i];
-		if (!v || v == no_leader) {
-			continue;
-		}
+    data->count[vote->index]++;
+    tk_log_debug("Majority: %d %s wants %d %s => %d",
+                 site->index, site_string(site), vote->index, site_string(vote),
+                 data->count[vote->index]);
 
-		n = v->index;
-		count[n]++;
-		tk_log_debug("Majority: %d %s wants %d %s => %d",
-			     i, site_string(node), n, site_string(v), count[n]);
+    if ((data->count[vote->index] * 2) <= data->conf->site_count) {
+        // Site's vote didn't create a majority, so continue iterating
+        return true;
+    }
 
-		if (count[n]*2 <= conf->site_count) {
-			continue;
-		}
+    tk_log_debug("Majority reached: %d of %d for %s", data->count[vote->index],
+                 data->conf->site_count, site_string(vote));
 
-		tk_log_debug("Majority reached: %d of %d for %s",
-			     count[n], conf->site_count, site_string(v));
-		return v;
-	}
+    // Majority reached, so stop iterating
+    data->winner = vote;
+    return false;
+}
 
-	return NULL;
+static struct booth_site *
+majority_votes(const struct booth_config *conf, struct ticket_config *ticket)
+{
+    struct majority_votes_data data = {
+        .conf = conf,
+        .ticket = ticket,
+        .count = { 0, },
+        .winner = NULL,
+    };
+
+    assert((conf != NULL) && (ticket != NULL));
+
+    booth__foreach_const_site(conf, check_majority_votes_site, &data);
+
+    // Cast away const
+    return (struct booth_site *) data.winner;
 }
 
 void
