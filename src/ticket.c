@@ -480,11 +480,11 @@ do_revoke_ticket(struct booth_config *conf, struct ticket_config *tk)
 }
 
 static int
-number_sites_marked_as_granted(struct booth_config *conf,
-                               struct ticket_config *tk)
+num_sites_granted(const struct booth_config *conf,
+                  const struct ticket_config *tk)
 {
 	int i, result = 0;
-	struct booth_site *ignored __attribute__((unused));
+	const struct booth_site *ignored __attribute__((unused));
 
 	FOREACH_NODE(conf, i, ignored) {
 		if (tk->sites_where_granted[i]) {
@@ -542,21 +542,22 @@ list_ticket(struct ticket_config *ticket, void *user_data)
 static int
 list_tickets(struct booth_config *conf, char **pdata)
 {
-	GString *s = g_string_sized_new(BUFSIZ);
+	GString *buf = g_string_sized_new(BUFSIZ);
 	struct ticket_config *tk;
-	struct booth_site *site;
-	int i, site_index;
+	int i = 0;
 
-	booth__foreach_ticket(conf, list_ticket, s);
+	booth__foreach_ticket(conf, list_ticket, buf);
 
 	FOREACH_TICKET(conf, i, tk) {
-		int multiple_grant_warning_length = number_sites_marked_as_granted(conf, tk);
+		struct booth_site *site = NULL;
+		int site_index = 0;
+		int multiple_grant_warning_length = num_sites_granted(conf, tk);
 
 		if (multiple_grant_warning_length <= 1) {
 			continue;
 		}
 
-		g_string_append_printf(s, "\nWARNING: The ticket %s is granted to multiple sites: ",
+		g_string_append_printf(buf, "\nWARNING: The ticket %s is granted to multiple sites: ",
 				       tk->name);
 
 		FOREACH_NODE(conf, site_index, site) {
@@ -564,19 +565,18 @@ list_tickets(struct booth_config *conf, char **pdata)
 				continue;
 			}
 
-			g_string_append(s, site_string(site));
+			g_string_append(buf, site_string(site));
 
-			multiple_grant_warning_length--;
-			if (multiple_grant_warning_length > 0) {
-				g_string_append(s, ", ");
+			if (--multiple_grant_warning_length > 0) {
+				g_string_append(buf, ", ");
 			}
 		}
 
-		g_string_append(s, ". Revoke the ticket from the faulty sites.\n");
+		g_string_append(buf, ". Revoke the ticket from the faulty sites.\n");
 	}
 
-	*pdata = strdup(s->str);
-	g_string_free(s, TRUE);
+	*pdata = strdup(buf->str);
+	g_string_free(buf, TRUE);
 
 	if (*pdata == NULL) {
 		return -ENOMEM;
