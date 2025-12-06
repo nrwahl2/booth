@@ -522,7 +522,7 @@ process_signals(struct booth_config *conf)
 	}
 	if (sig_chld_handler_called) {
 		sig_chld_handler_called = 0;
-		wait_child(conf);
+		booth__foreach_ticket(conf, booth__wait_ticket_test, NULL);
 	}
 
 	return 0;

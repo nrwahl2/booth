@@ -128,29 +128,45 @@ tk_test_exit_status(struct ticket_config *tk)
 	return rv;
 }
 
-void
-wait_child(struct booth_config *conf)
+bool
+booth__wait_ticket_test(struct ticket_config *ticket, void *user_data)
 {
-	int i, status;
-	struct ticket_config *tk;
+    struct ticket_config *tk = ticket;  // Used by tk_log_debug()
+    struct clu_test *test_prog = &ticket->clu_test;
+    int status = 0;
 
-	/* use waitpid(2) and not wait(2) in order not to interfere
-	 * with popen(2)/pclose(2) and system(2) used in pacemaker.c
-	 */
-	FOREACH_TICKET(conf, i, tk) {
-		if (tk_test.path && tk_test.pid > 0 &&
-				(tk_test.progstate == EXTPROG_RUNNING ||
-				tk_test.progstate == EXTPROG_IGNORE) &&
-				waitpid(tk_test.pid, &status, WNOHANG) == tk_test.pid) {
-			if (tk_test.progstate == EXTPROG_IGNORE) {
-				/* not interested in the outcome */
-				reset_test_state(tk);
-			} else {
-				tk_test.status = status;
-				set_progstate(tk, EXTPROG_EXITED);
-			}
-		}
-	}
+    if (test_prog->path == NULL) {
+        // Ticket has no test program
+        return true;
+    }
+
+    if ((test_prog->pid <= 0)
+        || (test_prog->progstate == EXTPROG_IDLE)
+        || (test_prog->progstate == EXTPROG_EXITED)) {
+
+        // Test program is not expected to be running
+        return true;
+    }
+
+    /* Use waitpid() instead of wait(), so that we don't interfere with
+     * popen()/pclose() and system() used in pacemaker.c
+     */
+    if (waitpid(test_prog->pid, &status, WNOHANG) != test_prog->pid) {
+        // Test program's state has not yet changed, or waitpid() failed
+        return true;
+    }
+
+    if (test_prog->progstate == EXTPROG_IGNORE) {
+        // We sent the child a SIGTERM and set this state to ignore the result
+        reset_test_state(ticket);
+
+    } else {
+        // EXTPROG_RUNNING: We've been awaiting the child's result
+        test_prog->status = status;
+        set_progstate(ticket, EXTPROG_EXITED);
+    }
+
+    return true;
 }
 
 /* the parent may want to have us stop processing scripts, say

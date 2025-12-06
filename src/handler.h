@@ -29,7 +29,7 @@ int tk_test_exit_status(struct ticket_config *tk);
 void ignore_ext_test(struct ticket_config *tk);
 int is_ext_prog_running(struct ticket_config *tk);
 void ext_prog_timeout(struct ticket_config *tk);
-void wait_child(struct booth_config *conf);
+bool booth__wait_ticket_test(struct ticket_config *ticket, void *user_data);
 
 #define set_progstate(tk, newst) do { \
 	if (!(newst)) tk_log_debug("progstate reset"); \
