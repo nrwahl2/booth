@@ -77,28 +77,27 @@ find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
              const struct ifaddrmsg *ifa, bool fuzzy_allowed,
              struct booth_site **me, int *address_bits_matched)
 {
-	int i;
-	struct booth_site *node;
-	int bytes, bits_left, mask;
-	unsigned char node_bits, ip_bits;
-	uint8_t *n_a;
-	int matched;
+	int i = 0;
+	struct booth_site *node = NULL;
+	int bytes = ifa->ifa_prefixlen / 8;
+	int bits_left = ifa->ifa_prefixlen % 8;
 
-	assert(conf != NULL);
-
-	bytes = ifa->ifa_prefixlen / 8;
-	bits_left = ifa->ifa_prefixlen % 8;
-	/* One bit left to check means ignore 7 lowest bits. */
-	mask = ~( (1 << (8 - bits_left)) -1);
+	// One bit left to check means to ignore the seven lowest bits
+	int mask = ~((1 << (8 - bits_left)) - 1);
 
 	FOREACH_NODE(conf, i, node) {
+		int matched = 0;
+		uint8_t *n_a = NULL;
+		unsigned char node_bits = 0;
+		unsigned char ip_bits = 0;
+
 		if (ifa->ifa_family != node->family) {
 			continue;
 		}
 
 		n_a = node_to_addr_pointer(node);
 
-		for (matched = 0; matched < node->addrlen; matched++) {
+		for (; matched < node->addrlen; matched++) {
 			if (ipaddr[matched] != n_a[matched]) {
 				break;
 			}
