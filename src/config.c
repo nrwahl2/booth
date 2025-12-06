@@ -989,6 +989,13 @@ get_other_site(const struct booth_config *conf, struct booth_site **node)
 		}
 
 		if (*node != NULL) {
+			/* *node was set during a previous iteration, so there
+			 * are more than two sites. OTHER_SITE is supported only
+			 * in two-site configurations.
+			 *
+			 * We can't rely on conf->site_count, because it
+			 * includes sites with type other than SITE.
+			 */
 			return false;
 		}
 
@@ -996,6 +1003,9 @@ get_other_site(const struct booth_config *conf, struct booth_site **node)
 		*node = (struct booth_site *) n;
 	}
 
+	/* If *node is set after the loop, then exactly one non-local site was
+	 * found
+	 */
 	return (*node != NULL);
 }
 
