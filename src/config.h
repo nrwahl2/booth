@@ -372,10 +372,10 @@ int check_config(struct booth_config *conf, int type);
  * @param[out] node relevant tracked data when found
  * @param[in] any_type whether or not to consider also non-site members
  *
- * @return 0 if nothing found, or 1 when found (node assigned accordingly)
+ * @return \c true if site was found, or \c false otherwise
  */
-int find_site_by_name(struct booth_config *conf, const char *site,
-		      struct booth_site **node, int any_type);
+bool find_site_by_name(struct booth_config *conf, const char *site,
+                       struct booth_site **node, int any_type);
 
 
 /**
