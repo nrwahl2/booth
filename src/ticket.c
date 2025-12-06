@@ -112,8 +112,8 @@ check_max_len_valid(const char *s, int max)
 	return 0;
 }
 
-int
-find_ticket_by_name(struct booth_config *conf, const char *ticket,
+bool
+find_ticket_by_name(const struct booth_config *conf, const char *name,
                     struct ticket_config **found)
 {
 	struct ticket_config *tk;
@@ -124,7 +124,7 @@ find_ticket_by_name(struct booth_config *conf, const char *ticket,
 	}
 
 	FOREACH_TICKET(conf, i, tk) {
-		if (strncmp(tk->name, ticket, sizeof(tk->name))) {
+		if (strncmp(tk->name, name, sizeof(tk->name))) {
 			continue;
 		}
 
@@ -132,10 +132,10 @@ find_ticket_by_name(struct booth_config *conf, const char *ticket,
 			*found = tk;
 		}
 
-		return 1;
+		return true;
 	}
 
-	return 0;
+	return false;
 }
 
 int
@@ -154,7 +154,7 @@ check_ticket(struct booth_config *conf, char *ticket,
 		return 0;
 	}
 
-	return find_ticket_by_name(conf, ticket, found);
+	return find_ticket_by_name(conf, ticket, found)? 1 : 0;
 }
 
 /* is it safe to commit the grant?

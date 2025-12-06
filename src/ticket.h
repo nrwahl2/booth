@@ -151,14 +151,14 @@ int check_max_len_valid(const char *s, int max);
  * @internal
  * Find a ticket based on a given name
  *
- * @param[in,out] conf   config object to refer to
- * @param[in]     ticket name of the ticket to search for
+ * @param[in]     conf   config object to refer to
+ * @param[in]     name   name of the ticket to search for
  * @param[out]    found  place the reference here when found
  *
  * @return see @list_ticket and @send_header_plus
  */
-int find_ticket_by_name(struct booth_config *conf,
-			const char *ticket, struct ticket_config **found);
+bool find_ticket_by_name(const struct booth_config *conf, const char *name,
+                         struct ticket_config **found);
 
 void set_ticket_wakeup(struct ticket_config *tk);
 
