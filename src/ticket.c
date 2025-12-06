@@ -468,54 +468,59 @@ number_sites_marked_as_granted(struct booth_config *conf,
 	return result;
 }
 
+static bool
+list_ticket(struct ticket_config *ticket, void *user_data)
+{
+    GString *buf = user_data;
+
+    g_string_append_printf(buf, "ticket: %s, leader: %s", ticket->name,
+                           ticket_leader_string(ticket));
+
+    if (is_owned(ticket)) {
+        g_string_append(buf, ", expires: ");
+
+        if (!is_manual(ticket) && is_time_set(&ticket->term_expires)) {
+            // Manual tickets don't have term_expires defined
+            char timeout_str[64] = { '\0', };
+            time_t ts = wall_ts(&ticket->term_expires);
+
+            strftime(timeout_str, sizeof(timeout_str), "%F %T", localtime(&ts));
+            g_string_append(buf, timeout_str);
+
+        } else {
+            g_string_append(buf, "INF");
+        }
+
+        if ((ticket->leader == local)
+            && is_time_set(&ticket->delay_commit)
+            && !is_past(&ticket->delay_commit)) {
+
+            char until_str[64] = { '\0', };
+            time_t ts = wall_ts(&ticket->delay_commit);
+
+            strftime(until_str, sizeof(until_str), "%F %T", localtime(&ts));
+            g_string_append_printf(buf, " (commit pending until %s)",
+                                   until_str);
+        }
+    }
+
+    if (is_manual(ticket)) {
+        g_string_append(buf, " [manual mode]");
+    }
+
+    g_string_append_c(buf, '\n');
+    return true;
+}
+
 static int
-list_ticket(struct booth_config *conf, char **pdata)
+list_tickets(struct booth_config *conf, char **pdata)
 {
 	GString *s = g_string_sized_new(BUFSIZ);
 	struct ticket_config *tk;
 	struct booth_site *site;
 	int i, site_index;
 
-	FOREACH_TICKET(conf, i, tk) {
-		g_string_append_printf(s, "ticket: %s, leader: %s", tk->name,
-				       ticket_leader_string(tk));
-
-		if (is_owned(tk)) {
-			g_string_append(s, ", expires: ");
-
-			if (!is_manual(tk) && is_time_set(&tk->term_expires)) {
-				// Manual tickets don't have term_expires defined
-				char timeout_str[64] = { '\0', };
-				time_t ts = wall_ts(&tk->term_expires);
-
-				strftime(timeout_str, sizeof(timeout_str), "%F %T",
-					 localtime(&ts));
-				g_string_append(s, timeout_str);
-
-			} else {
-				g_string_append(s, "INF");
-			}
-
-			if ((tk->leader == local)
-				&& is_time_set(&tk->delay_commit)
-				&& !is_past(&tk->delay_commit)) {
-
-				char until_str[64] = { '\0', };
-				time_t ts = wall_ts(&tk->delay_commit);
-
-				strftime(until_str, sizeof(until_str), "%F %T",
-					 localtime(&ts));
-				g_string_append_printf(s, " (commit pending until %s)",
-						       until_str);
-			}
-		}
-
-		if (is_manual(tk)) {
-			g_string_append(s, " [manual mode]");
-		}
-
-		g_string_append_c(s, '\n');
-	}
+	booth__foreach_ticket(conf, list_ticket, s);
 
 	FOREACH_TICKET(conf, i, tk) {
 		int multiple_grant_warning_length = number_sites_marked_as_granted(conf, tk);
@@ -707,7 +712,7 @@ ticket_answer_list(struct booth_config *conf, int fd)
 	int rv;
 	struct boothc_hdr_msg hdr;
 
-	rv = list_ticket(conf, &data);
+	rv = list_tickets(conf, &data);
 	if (rv < 0) {
 		goto out;
 	}
