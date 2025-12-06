@@ -32,17 +32,21 @@
 #include "log.h"
 #include "manual.h"
 
-static inline void
-clear_election(struct booth_config *conf, struct ticket_config *tk)
+static bool
+clear_site_vote(const struct booth_site *site, void *user_data)
 {
-	int i;
-	struct booth_site *site;
+    struct ticket_config *tk = user_data;
 
-	tk_log_debug("clear election");
-	tk->votes_received = 0;
-	FOREACH_NODE(conf, i, site) {
-		tk->votes_for[site->index] = NULL;
-	}
+    tk->votes_for[site->index] = NULL;
+    return true;
+}
+
+static inline void
+clear_election(const struct booth_config *conf, struct ticket_config *tk)
+{
+    tk_log_debug("clear election");
+    tk->votes_received = 0;
+    booth__foreach_const_site(conf, clear_site_vote, tk);
 }
 
 static inline void
