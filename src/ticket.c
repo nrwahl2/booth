@@ -708,7 +708,7 @@ setup_ticket(struct booth_config *conf)
 		tk_log_info("broadcasting state query");
 		/* wait until all send their status (or the first
 		 * timeout) */
-		tk->start_postpone = 1;
+		tk->start_postpone = true;
 		ticket_broadcast(conf, tk, OP_STATUS, OP_MY_INDEX, RLT_SUCCESS, 0);
 	}
 
@@ -1060,7 +1060,7 @@ process_next_state(struct booth_config *conf, struct ticket_config *tk)
 		break;
 	}
 
-	tk->start_postpone = 0;
+	tk->start_postpone = false;
 }
 
 static void
@@ -1291,7 +1291,7 @@ update_acks(const struct booth_config *conf, struct ticket_config *tk,
 	    /* we just stepped down, need only one site to start elections */
 	    (cmd == OP_REQ_VOTE && tk->last_request == OP_VOTE_FOR)) {
 		no_resends(tk);
-		tk->start_postpone = 0;
+		tk->start_postpone = false;
 		set_ticket_wakeup(tk);
 	}
 }

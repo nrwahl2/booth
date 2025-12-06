@@ -239,7 +239,7 @@ struct ticket_config {
 	/* we need to wait for MY_INDEX from other servers,
 	 * hold the ticket processing for a while until they reply
 	 */
-	int start_postpone;
+	bool start_postpone;
 
 	/** Last renewal time */
 	timetype last_renewal;
