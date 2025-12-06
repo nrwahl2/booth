@@ -376,7 +376,6 @@ int check_config(struct booth_config *conf, int type);
 bool find_site_by_name(const struct booth_config *conf, const char *name,
                        struct booth_site **node);
 
-
 /**
  * @internal
  * Find site in booth configuration by a hash (id)
@@ -385,10 +384,10 @@ bool find_site_by_name(const struct booth_config *conf, const char *name,
  * @param[in] site_id hash (id) to match against previously resolved ones
  * @param[out] node relevant tracked data when found
  *
- * @return 0 if nothing found, or 1 when found (node assigned accordingly)
+ * @return \c true if site was found, or \c false otherwise
  */
-int find_site_by_id(struct booth_config *conf, uint32_t site_id,
-		    struct booth_site **node);
+bool find_site_by_id(struct booth_config *conf, uint32_t site_id,
+                     struct booth_site **node);
 
 const char *type_to_string(int type);
 

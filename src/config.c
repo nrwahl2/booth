@@ -1052,30 +1052,28 @@ find_site_by_name(const struct booth_config *conf, const char *name,
     return !booth__foreach_const_site(conf, get_if_name_matches, &data);
 }
 
-int
-find_site_by_id(struct booth_config *conf, uint32_t site_id,
+bool
+find_site_by_id(struct booth_config *conf, uint32_t id,
                 struct booth_site **node)
 {
 	struct booth_site *n;
 	int i;
 
-	if (site_id == NO_ONE) {
-		*node = no_leader;
-		return 1;
-	}
+	assert((conf != NULL) && (node != NULL));
 
-	if (conf == NULL) {
-		return 0;
+	if (id == NO_ONE) {
+		*node = no_leader;
+		return true;
 	}
 
 	FOREACH_NODE(conf, i, n) {
-		if (n->site_id == site_id) {
+		if (n->site_id == id) {
 			*node = n;
-			return 1;
+			return true;
 		}
 	}
 
-	return 0;
+	return false;
 }
 
 const char *
