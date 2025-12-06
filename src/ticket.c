@@ -578,26 +578,19 @@ warn_if_multiple_grants(const struct ticket_config *ticket, void *user_data)
     return true;
 }
 
-static int
-list_tickets(struct booth_config *conf, char **pdata)
+static GString *
+list_tickets(struct booth_config *conf)
 {
-	GString *buf = g_string_sized_new(BUFSIZ);
-	struct warn_if_multiple_grants_data data = {
-		.conf = conf,
-		.buf = buf,
-	};
+    GString *buf = g_string_sized_new(BUFSIZ);
+    struct warn_if_multiple_grants_data data = {
+        .conf = conf,
+        .buf = buf,
+    };
 
-	booth__foreach_ticket(conf, list_ticket, buf);
-	booth__foreach_const_ticket(conf, warn_if_multiple_grants, &data);
+    booth__foreach_ticket(conf, list_ticket, buf);
+    booth__foreach_const_ticket(conf, warn_if_multiple_grants, &data);
 
-	*pdata = strdup(buf->str);
-	g_string_free(buf, TRUE);
-
-	if (*pdata == NULL) {
-		return -ENOMEM;
-	}
-
-	return 0;
+    return buf;
 }
 
 void
@@ -750,21 +743,16 @@ booth__setup_ticket(struct ticket_config *ticket, void *user_data)
 int
 ticket_answer_list(struct booth_config *conf, int fd)
 {
-	char *data = NULL;
-	int rv;
-	struct boothc_hdr_msg hdr;
+    struct boothc_hdr_msg hdr = { 0, };
+    int rv = 0;
+    GString *data = list_tickets(conf);
 
-	rv = list_tickets(conf, &data);
-	if (rv < 0) {
-		goto out;
-	}
+    init_header(conf, &hdr.header, CL_LIST, 0, 0, RLT_SUCCESS, 0,
+                sizeof(hdr) + data->len);
+    rv = send_header_plus(conf, fd, &hdr, data->str, data->len);
 
-	init_header(conf, &hdr.header, CL_LIST, 0, 0, RLT_SUCCESS, 0, sizeof(hdr) + strlen(data));
-	rv = send_header_plus(conf, fd, &hdr, data, strlen(data));
-
-out:
-	free(data);
-	return rv;
+    g_string_free(data, TRUE);
+    return rv;
 }
 
 int
