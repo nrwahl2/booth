@@ -178,19 +178,16 @@ save_term(struct booth_config *conf, struct ticket_config *tk, const char *name,
 	return 0;
 }
 
-static int
+static bool
 parse_boolean(const char *val)
 {
-	long v;
-
-	if (!strncmp(val, "false", 5)) {
-		v = 0;
-	} else if (!strncmp(val, "true", 4)) {
-		v = 1;
-	} else {
-		v = atol(val);
-	}
-	return v;
+    if (strncmp(val, "false", 5) == 0) {
+        return false;
+    }
+    if (strncmp(val, "true", 4) == 0) {
+        return true;
+    }
+    return (atol(val) != 0);
 }
 
 static int

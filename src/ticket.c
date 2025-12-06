@@ -567,7 +567,7 @@ void
 disown_ticket(struct ticket_config *tk)
 {
 	set_leader(tk, NULL);
-	tk->is_granted = 0;
+	tk->is_granted = false;
 	get_time(&tk->term_expires);
 }
 

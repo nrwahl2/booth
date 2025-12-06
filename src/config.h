@@ -155,7 +155,7 @@ struct ticket_config {
 	struct booth_site *lost_leader;
 
 	/** Is the ticket granted? */
-	int is_granted;
+	bool is_granted;
 
 	/** Which site considered itself a leader.
 	 * For manual tickets it is possible, that
