@@ -35,6 +35,15 @@
 #include "booth.h"
 #include "handler.h"
 
+#define set_progstate(tk, state) do {                       \
+        if ((state) == EXTPROG_IDLE) {                      \
+            tk_log_debug("progstate reset");                \
+        } else {                                            \
+            tk_log_debug("progstate set to %d", (state));   \
+        }                                                   \
+        tk->clu_test.progstate = (state);                   \
+    } while (0)
+
 static int
 set_booth_env(const struct booth_config *conf, struct ticket_config *tk)
 {
