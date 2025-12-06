@@ -595,6 +595,31 @@ list_ticket(struct ticket_config *ticket, void *user_data)
     return true;
 }
 
+struct warn_for_site_if_granted_data {
+    const struct ticket_config *ticket;
+    GString *buf;
+    bool first;
+};
+
+static bool
+warn_for_site_if_granted(const struct booth_site *site, void *user_data)
+{
+    struct warn_for_site_if_granted_data *data = user_data;
+
+    if (!data->ticket->sites_where_granted[site->index]) {
+        // Ticket is not granted to this site
+        return true;
+    }
+
+    // Append site name to the (string) list of nodes where ticket is granted
+    if (!data->first) {
+        g_string_append(data->buf, ", ");
+        data->first = true;
+    }
+    g_string_append(data->buf, site_string(site));
+    return true;
+}
+
 struct warn_if_multiple_grants_data {
     const struct booth_config *conf;
     GString *buf;
@@ -604,12 +629,14 @@ static bool
 warn_if_multiple_grants(const struct ticket_config *ticket, void *user_data)
 {
     struct warn_if_multiple_grants_data *data = user_data;
-    int granted = num_sites_granted(data->conf, ticket);
+    struct warn_for_site_if_granted_data site_data = {
+        .ticket = ticket,
+        .buf = data->buf,
+        .first = true,
+    };
 
-    int site_index = 0;
-    const struct booth_site *site = NULL;
-
-    if (granted <= 1) {
+    if (num_sites_granted(data->conf, ticket) <= 1) {
+        // Nothing to warn about; continue checking the rest of the tickets
         return true;
     }
 
@@ -618,17 +645,7 @@ warn_if_multiple_grants(const struct ticket_config *ticket, void *user_data)
                            "sites: ",
                            ticket->name);
 
-    FOREACH_NODE(data->conf, site_index, site) {
-        if (!ticket->sites_where_granted[site_index]) {
-            continue;
-        }
-
-        g_string_append(data->buf, site_string(site));
-
-        if (--granted > 0) {
-            g_string_append(data->buf, ", ");
-        }
-    }
+    booth__foreach_const_site(data->conf, warn_for_site_if_granted, &site_data);
 
     g_string_append(data->buf, ". Revoke the ticket from the faulty sites.\n");
     return true;
