@@ -976,24 +976,24 @@ g_inval:
 }
 
 static bool
-get_other_site(struct booth_config *conf, struct booth_site **node)
+get_other_site(const struct booth_config *conf, struct booth_site **node)
 {
-	struct booth_site *n;
-	int i;
+	const struct booth_site *n = NULL;
+	int i = 0;
 
 	*node = NULL;
-	if (conf == NULL) {
-		return false;
-	}
 
 	FOREACH_NODE(conf, i, n) {
-		if (n != local && n->type == SITE) {
-			if (!*node) {
-				*node = n;
-			} else {
-				return false;
-			}
+		if ((n == local) || (n->type != SITE)) {
+			continue;
 		}
+
+		if (*node != NULL) {
+			return false;
+		}
+
+		// Cast away const for output argument
+		*node = (struct booth_site *) n;
 	}
 
 	return (*node != NULL);
