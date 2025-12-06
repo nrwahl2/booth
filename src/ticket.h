@@ -40,6 +40,10 @@ extern int TIME_RES;
 	     (t_ = (b_)->ticket + i_, i_ < (b_)->ticket_count); \
 	     i_++)
 
+bool booth__foreach_ticket(struct booth_config *conf,
+                           bool (*fn)(struct ticket_config *, void *),
+                           void *user_data);
+
 #define FOREACH_NODE(b_, i_, n_) \
 	for (i_ = 0; \
 	     (n_ = (b_)->site + i_, i_ < (b_)->site_count); \
