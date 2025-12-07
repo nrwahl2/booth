@@ -294,11 +294,13 @@ save_attributes(struct booth_config *conf, struct ticket_config *tk,
 
 	n = xmlDocGetRootElement(doc);
 	if (n == NULL) {
-		tk_log_error("crm_ticket xml output empty");
+		booth__ticket_err(tk, "crm_ticket xml output empty");
 		return -EINVAL;
 	}
 	if (xmlStrcmp(n->name, (const xmlChar *)"ticket_state")) {
-		tk_log_error("crm_ticket xml root element not ticket_state");
+		booth__ticket_err(tk,
+				  "crm_ticket xml root element not "
+				  "ticket_state");
 		return -EINVAL;
 	}
 	for (attr = n->properties; attr; attr = attr->next) {
@@ -316,7 +318,9 @@ save_attributes(struct booth_config *conf, struct ticket_config *tk,
 				       (const char *) v);
 		}
 		if (rc) {
-			tk_log_error("error storing attribute %s", attr->name);
+			booth__ticket_err(tk,
+					  "error storing attribute %s",
+					  attr->name);
 			rv |= rc;
 		}
 		xmlFree(v);
@@ -338,7 +342,7 @@ parse_ticket_state(struct booth_config *conf, struct ticket_config *tk, FILE *p)
 
 	/* skip first two lines of output */
 	if (fgets(line, CHUNK_SIZE-1, p) == NULL || fgets(line, CHUNK_SIZE-1, p) == NULL) {
-		tk_log_error("crm_ticket xml output empty");
+		booth__ticket_err(tk, "crm_ticket xml output empty");
 		rv = ENODATA;
 		goto out;
 	}
@@ -352,11 +356,13 @@ parse_ticket_state(struct booth_config *conf, struct ticket_config *tk, FILE *p)
 	if (doc == NULL) {
 		const xmlError *errptr = xmlGetLastError();
 		if (errptr) {
-			tk_log_error("crm_ticket xml parse failed (domain=%d, level=%d, code=%d): %s",
-					errptr->domain, errptr->level,
-					errptr->code, errptr->message);
+			booth__ticket_err(tk,
+					  "crm_ticket xml parse failed "
+					  "(domain=%d, level=%d, code=%d): %s",
+					  errptr->domain, errptr->level,
+					  errptr->code, errptr->message);
 		} else {
-			tk_log_error("crm_ticket xml parse failed");
+			booth__ticket_err(tk, "crm_ticket xml parse failed");
 		}
 		rv = -EINVAL;
 		goto out;

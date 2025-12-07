@@ -761,9 +761,11 @@ log_reacquire_reason(struct ticket_config *tk)
 
 	if (tk->is_granted && tk->leader != local) {
 		if (tk->leader && tk->leader != no_leader) {
-			tk_log_error("granted here, but also %s, "
-				     "that's really too bad (will try to reacquire)",
-				     where_granted);
+			booth__ticket_err(tk,
+					  "granted here, but also %s, that's "
+					  "really too bad (will try to "
+					  "reacquire)",
+					  where_granted);
 		} else {
 			booth__ticket_warn(tk,
 					   "granted here, but we're not "
@@ -1483,7 +1485,8 @@ ticket_recv(struct booth_config *conf, void *buf, struct booth_site *source)
 
 	leader_u = ntohl(msg->ticket.leader);
 	if (!find_site_by_id(conf, leader_u, &leader)) {
-		tk_log_error("message with unknown leader %u received", leader_u);
+		booth__ticket_err(tk, "message with unknown leader %u received",
+				  leader_u);
 		source->invalid_cnt++;
 		return -EINVAL;
 	}
@@ -1574,7 +1577,8 @@ set_ticket_wakeup(struct ticket_config *tk)
 			break;
 
 		default:
-			tk_log_error("unknown ticket state: %d", tk->state);
+			booth__ticket_err(tk, "unknown ticket state: %d",
+					  tk->state);
 		}
 
 		if (tk->next_state) {

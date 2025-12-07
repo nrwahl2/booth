@@ -43,9 +43,6 @@
 #define log_warn(fmt, args...)		priv_log(LOG_WARNING, fmt, ##args)
 #define log_error(fmt, args...)		priv_log(LOG_ERR, fmt, ##args)
 
-/* all tk_* macros prepend "%(tk->name): " (the caller needs to
- * have the ticket named tk!)
- */
 #define booth__log_ticket(ticket, level, fmt, args...)                  \
     priv_log(level, "%s (%s/%d/%d): " fmt, (ticket)->name,              \
              state_to_string((ticket)->state), (ticket)->current_term,  \
@@ -67,6 +64,7 @@
 #define booth__ticket_warn(ticket, fmt, args...)    \
     booth__log_ticket(ticket, LOG_WARNING, fmt, ##args)
 
-#define tk_log_error(fmt, args...) booth__log_ticket(tk, LOG_ERR, fmt, ##args)
+#define booth__ticket_err(ticket, fmt, args...) \
+    booth__log_ticket(ticket, LOG_ERR, fmt, ##args)
 
 #endif /* _LOG_H */

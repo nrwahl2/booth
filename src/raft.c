@@ -457,9 +457,10 @@ process_REVOKE(struct booth_config *conf, struct ticket_config *tk,
 		rv = send_msg(conf, OP_ACK, tk, sender, msg);
 	} else if (tk->leader != sender) {
 		if (!is_manual(tk)) {
-			tk_log_error("%s wants to revoke ticket, "
-					"but it is not granted there (ignoring)",
-					site_string(sender));
+			booth__ticket_err(tk,
+					  "%s wants to revoke ticket, but it "
+					  "is not granted there (ignoring)",
+					  site_string(sender));
 			return -1;
 		}
 
@@ -468,10 +469,11 @@ process_REVOKE(struct booth_config *conf, struct ticket_config *tk,
 		// has not been revoked) or be a leader itself.
 		rv = process_REVOKE_for_manual_ticket(conf, tk, sender, msg);
 	} else if (tk->state != ST_FOLLOWER) {
-		tk_log_error("unexpected ticket revoke from %s "
-				"(in state %s) (ignoring)",
-				site_string(sender),
-				state_to_string(tk->state));
+		booth__ticket_err(tk,
+				  "unexpected ticket revoke from %s "
+				  "(in state %s) (ignoring)",
+				  site_string(sender),
+				  state_to_string(tk->state));
 		return -1;
 	} else {
 		booth__ticket_info(tk, "%s revokes ticket",
@@ -904,17 +906,18 @@ leader_handle_newer_ticket(struct ticket_config *tk, struct booth_site *sender,
 	if (leader != no_leader && leader && leader != local) {
 		/* eek, two leaders, split brain */
 		/* normally shouldn't happen; run election */
-		tk_log_error("from %s: ticket granted to %s! (revoking locally)",
-				site_string(sender),
-				site_string(leader)
-				);
+		booth__ticket_err(tk,
+				  "from %s: ticket granted to %s! "
+				  "(revoking locally)",
+				  site_string(sender), site_string(leader));
+
 	} else if (term_time_left(tk)) {
 		/* eek, two leaders, split brain */
 		/* normally shouldn't happen; run election */
-		tk_log_error("from %s: ticket granted to %s! (revoking locally)",
-				site_string(sender),
-				site_string(leader)
-				);
+		booth__ticket_err(tk,
+				  "from %s: ticket granted to %s! "
+				  "(revoking locally)",
+				  site_string(sender), site_string(leader));
 	}
 	set_next_state(tk, ST_LEADER);
 	return 0;
@@ -1077,8 +1080,8 @@ raft_answer(struct booth_config *conf, struct ticket_config *tk,
 
 		break;
 	default:
-		tk_log_error("unknown message %s, from %s",
-			state_to_string(cmd), site_string(sender));
+		booth__ticket_err(tk, "unknown message %s, from %s",
+				  state_to_string(cmd), site_string(sender));
 		rv = -EINVAL;
 	}
 	return rv;

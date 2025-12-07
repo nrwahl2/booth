@@ -87,7 +87,7 @@ run_ext_prog(const struct booth_config *conf, struct ticket_config *tk,
 	closefiles(); /* don't leak open files */
 	booth__ticket_debug(tk, "running handler %s", prog);
 	execv(prog, tk->clu_test.argv);
-	tk_log_error("%s: execv failed (%s)", prog, strerror(errno));
+	booth__ticket_err(tk, "%s: execv failed (%s)", prog, strerror(errno));
 	_exit(1);
 }
 
@@ -238,7 +238,8 @@ process_ext_dir(const struct booth_config *conf, struct ticket_config *tk)
 			    tk->clu_test.path);
 	n_progs = scandir(tk->clu_test.path, &proglist, prog_filter, alphasort);
 	if (n_progs == -1) {
-		tk_log_error("%s: scandir failed (%s)", tk->clu_test.path, strerror(errno));
+		booth__ticket_err(tk, "%s: scandir failed (%s)",
+				  tk->clu_test.path, strerror(errno));
 		_exit(1);
 	}
 	for (i = 0; i < n_progs; i++) {
@@ -246,8 +247,9 @@ process_ext_dir(const struct booth_config *conf, struct ticket_config *tk)
 			break;
 		dp = proglist[i];
 		if (strlen(dp->d_name) + strlen(tk->clu_test.path) + 1 > FILENAME_MAX) {
-			tk_log_error("%s: name exceeds max length (%s)",
-				tk->clu_test.path, dp->d_name);
+			booth__ticket_err(tk,
+					  "%s: name exceeds max length (%s)",
+					  tk->clu_test.path, dp->d_name);
 			_exit(1);
 		}
 		strcpy(prog, tk->clu_test.path);
@@ -298,7 +300,8 @@ run_handler(const struct booth_config *conf, struct ticket_config *tk)
 		return 0;
 
 	if (stat(tk->clu_test.path, &stbuf)) {
-		tk_log_error("%s: stat failed (%s)", tk->clu_test.path, strerror(errno));
+		booth__ticket_err(tk, "%s: stat failed (%s)",
+				  tk->clu_test.path, strerror(errno));
 		return RUNCMD_ERR;
 	}
 	tk->clu_test.is_dir = (stbuf.st_mode & S_IFDIR);
