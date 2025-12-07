@@ -44,7 +44,7 @@ clear_site_vote(const struct booth_site *site, void *user_data)
 static inline void
 clear_election(const struct booth_config *conf, struct ticket_config *tk)
 {
-    tk_log_debug("clear election");
+    booth__ticket_debug(tk, "clear election");
     tk->votes_received = 0;
     booth__foreach_const_site(conf, clear_site_vote, tk);
 }
@@ -53,9 +53,8 @@ static inline void
 record_vote(struct ticket_config *tk, struct booth_site *who,
             struct booth_site *vote)
 {
-	tk_log_debug("site %s votes for %s",
-			site_string(who),
-			site_string(vote));
+	booth__ticket_debug(tk, "site %s votes for %s", site_string(who),
+			    site_string(vote));
 
 	if (!tk->votes_for[who->index]) {
 		tk->votes_for[who->index] = vote;
@@ -141,7 +140,8 @@ won_elections(struct booth_config *conf, struct ticket_config *tk)
 
 	if (is_time_set(&tk->delay_commit) && all_sites_replied(conf, tk)) {
 		time_reset(&tk->delay_commit);
-		tk_log_debug("reset delay commit as all sites replied");
+		booth__ticket_debug(tk,
+				    "reset delay commit as all sites replied");
 	}
 
 	save_committed_tkt(tk);
@@ -222,7 +222,6 @@ static bool
 check_majority_votes_site(const struct booth_site *site, void *user_data)
 {
     struct majority_votes_data *data = user_data;
-    struct ticket_config *tk = data->ticket;    // Used by tk_log_debug()
     const struct booth_site *vote = data->ticket->votes_for[site->index];
 
     if ((vote == NULL) || (vote == no_leader)) {
@@ -231,17 +230,18 @@ check_majority_votes_site(const struct booth_site *site, void *user_data)
     }
 
     data->count[vote->index]++;
-    tk_log_debug("Majority: %d %s wants %d %s => %d",
-                 site->index, site_string(site), vote->index, site_string(vote),
-                 data->count[vote->index]);
+    booth__ticket_debug(data->ticket, "Majority: %d %s wants %d %s => %d",
+                        site->index, site_string(site), vote->index,
+                        site_string(vote), data->count[vote->index]);
 
     if ((data->count[vote->index] * 2) <= data->conf->site_count) {
         // Site's vote didn't create a majority, so continue iterating
         return true;
     }
 
-    tk_log_debug("Majority reached: %d of %d for %s", data->count[vote->index],
-                 data->conf->site_count, site_string(vote));
+    booth__ticket_debug(data->ticket, "Majority reached: %d of %d for %s",
+                        data->count[vote->index], data->conf->site_count,
+                        site_string(vote));
 
     // Majority reached, so stop iterating
     data->winner = vote;
@@ -320,9 +320,10 @@ newer_term(struct ticket_config *tk, struct booth_site *sender,
 				term, tk->current_term,
 				ticket_leader_string(tk));
 	} else {
-		tk_log_debug("from %s: higher term %d vs. %d (election)",
-				site_string(sender),
-				term, tk->current_term);
+		booth__ticket_debug(tk,
+				    "from %s: higher term %d vs. %d (election)",
+				    site_string(sender), term,
+				    tk->current_term);
 	}
 
 	tk->current_term = term;
@@ -376,9 +377,10 @@ answer_HEARTBEAT(struct booth_config *conf, struct ticket_config *tk,
 	uint32_t term;
 
 	term = ntohl(msg->ticket.term);
-	tk_log_debug("heartbeat from leader: %s, have %s; term %d vs %d",
-			site_string(leader), ticket_leader_string(tk),
-			term, tk->current_term);
+	booth__ticket_debug(tk,
+			    "heartbeat from leader: %s, have %s; term %d vs %d",
+			    site_string(leader), ticket_leader_string(tk), term,
+			    tk->current_term);
 
 	if (term < tk->current_term) {
 		if (sender == tk->leader) {
@@ -423,8 +425,8 @@ process_UPDATE(struct booth_config *conf, struct ticket_config *tk,
 		return send_reject(conf, sender, tk, RLT_TERM_OUTDATED, msg);
 	}
 
-	tk_log_debug("leader %s wants to update our ticket",
-			site_string(leader));
+	booth__ticket_debug(tk, "leader %s wants to update our ticket",
+			    site_string(leader));
 
 	become_follower(conf, tk, msg);
 	set_leader(tk, leader);
@@ -798,16 +800,24 @@ new_election(struct booth_config *conf, struct ticket_config *tk,
 	}
 
 	if (ANYDEBUG) {
-		int tdiff;
+		const char *election_reason_s = "";
+
 		if (is_time_set(&tk->election_end)) {
-			tdiff = -time_left(&tk->election_end);
-			tk_log_debug("starting elections, previous finished since " intfmt(tdiff));
+			int tdiff = -time_left(&tk->election_end);
+
+			booth__ticket_debug(tk,
+					    "starting elections, previous "
+					    "finished since " intfmt(tdiff));
 		} else {
-			tk_log_debug("starting elections");
+			booth__ticket_debug(tk, "starting elections");
 		}
-		tk_log_debug("elections caused by %s %s",
-				state_to_string(reason),
-				reason == OR_AGAIN ? state_to_string(tk->election_reason) : "" );
+
+		if (reason == OR_AGAIN) {
+			election_reason_s =
+				state_to_string(tk->election_reason);
+		}
+		booth__ticket_debug(tk, "elections caused by %s %s",
+				    state_to_string(reason), election_reason_s);
 	}
 
 	/* §5.2 */
@@ -962,14 +972,12 @@ raft_answer(struct booth_config *conf, struct ticket_config *tk,
 	req = ntohl(msg->header.request);
 
 	if (req) {
-		tk_log_debug("got %s (req %s) from %s",
-				state_to_string(cmd),
-				state_to_string(req),
-				site_string(sender));
+		booth__ticket_debug(tk, "got %s (req %s) from %s",
+				    state_to_string(cmd), state_to_string(req),
+				    site_string(sender));
 	} else {
-		tk_log_debug("got %s from %s",
-				state_to_string(cmd),
-				site_string(sender));
+		booth__ticket_debug(tk, "got %s from %s", state_to_string(cmd),
+				    site_string(sender));
 	}
 
 	/* don't process tickets with invalid term

@@ -258,7 +258,8 @@ ticket_dangerous(const struct booth_config *conf, struct ticket_config *tk)
 	}
 
 	tdiff = time_left(&tk->delay_commit);
-	tk_log_debug("delay ticket commit for another " intfmt(tdiff));
+	booth__ticket_debug(tk,
+			    "delay ticket commit for another " intfmt(tdiff));
 
 	if (!no_log_delay_msg) {
 		tk_log_info("delaying ticket commit to CIB for " intfmt(tdiff));
@@ -718,7 +719,7 @@ reset_ticket_and_set_no_leader(struct ticket_config *tk)
 	reset_ticket(tk);
 
 	tk->leader = no_leader;
-	tk_log_debug("ticket leader set to no_leader");
+	booth__ticket_debug(tk, "ticket leader set to no_leader");
 }
 
 static void
@@ -905,8 +906,8 @@ process_client_request(struct booth_config *conf, struct client *req_client,
 		/* client may receive further notifications, save the
 		 * request for further processing */
 		add_req(tk, req_client, msg);
-		tk_log_debug("queue request %s for client %d",
-			     state_to_string(cmd), req_client->fd);
+		booth__ticket_debug(tk, "queue request %s for client %d",
+				    state_to_string(cmd), req_client->fd);
 		rc = 0; /* we're not yet done with the message */
 	}
 
@@ -937,8 +938,8 @@ notify_client(struct booth_config *conf, struct ticket_config *tk,
 		return 0;
 	}
 
-	tk_log_debug("notifying client %d (request %s)",
-		     client_fd, state_to_string(cmd));
+	booth__ticket_debug(tk, "notifying client %d (request %s)", client_fd,
+			    state_to_string(cmd));
 	init_ticket_msg(conf, &omsg, CL_RESULT, 0, rv, 0, tk);
 	rc = send_client_msg(conf, client_fd, &omsg);
 
@@ -950,11 +951,15 @@ notify_client(struct booth_config *conf, struct ticket_config *tk,
 		/* we sent a definite answer or there was a write error, drop
 		 * the client */
 		if (rc) {
-			tk_log_debug("failed to notify client %d (request %s)",
-				     client_fd, state_to_string(cmd));
+			booth__ticket_debug(tk,
+					    "failed to notify client %d "
+					    "(request %s)",
+					    client_fd, state_to_string(cmd));
 		} else {
-			tk_log_debug("client %d (request %s) got final notification",
-				     client_fd, state_to_string(cmd));
+			booth__ticket_debug(tk,
+					    "client %d (request %s) got final "
+					    "notification",
+					    client_fd, state_to_string(cmd));
 		}
 
 		req_client = clients + ci;
@@ -976,10 +981,9 @@ ticket_broadcast(struct booth_config *conf, struct ticket_config *tk,
 	struct boothc_ticket_msg msg;
 
 	init_ticket_msg(conf, &msg, cmd, 0, res, reason, tk);
-	tk_log_debug("broadcasting '%s' (term=%d, valid=%d)",
-		     state_to_string(cmd),
-		     ntohl(msg.ticket.term),
-		     msg_term_time(&msg));
+	booth__ticket_debug(tk, "broadcasting '%s' (term=%d, valid=%d)",
+			    state_to_string(cmd), ntohl(msg.ticket.term),
+			    msg_term_time(&msg));
 
 	tk->last_request = cmd;
 
@@ -1065,7 +1069,6 @@ static bool
 resend_if_needed(struct booth_site *site, void *user_data)
 {
     struct resend_if_needed_data *data = user_data;
-    struct ticket_config *tk = data->ticket; // tk_log_debug() uses this alias
 
     if ((data->ticket->acks_received & site->bitmask) != 0) {
         // Already received, so resend is not necessary
@@ -1073,9 +1076,9 @@ resend_if_needed(struct booth_site *site, void *user_data)
     }
 
     site->resend_cnt++;
-    tk_log_debug("resending %s to %s",
-                 state_to_string(data->ticket->last_request),
-                 site_string(site));
+    booth__ticket_debug(data->ticket, "resending %s to %s",
+                        state_to_string(data->ticket->last_request),
+                        site_string(site));
     send_msg(data->conf, data->ticket->last_request, data->ticket, site, NULL);
     return true;
 }
@@ -1247,9 +1250,9 @@ next_action(struct booth_config *conf, struct ticket_config *tk)
 	case ST_FOLLOWER:
 		if (!is_manual(tk)) {
 			/* leader/ticket lost? and we didn't vote yet */
-			tk_log_debug("leader: %s, voted_for: %s",
-				     site_string(tk->leader),
-				     site_string(tk->voted_for));
+			booth__ticket_debug(tk, "leader: %s, voted_for: %s",
+					    site_string(tk->leader),
+					    site_string(tk->voted_for));
 
 			if (tk->leader) {
 				break;
@@ -1315,8 +1318,9 @@ ticket_cron(struct booth_config *conf, struct ticket_config *tk)
 {
 	/* don't process the tickets too early after start */
 	if (postpone_ticket_processing(tk)) {
-		tk_log_debug("ticket processing postponed (start_postpone=%d)",
-			     tk->start_postpone);
+		booth__ticket_debug(tk,
+				    "ticket processing postponed "
+				    "(start_postpone=%d)", tk->start_postpone);
 		/* but run again soon */
 		ticket_activate_timeout(tk);
 		return;
@@ -1360,7 +1364,6 @@ bool
 booth__process_ticket(struct ticket_config *ticket, void *user_data)
 {
     struct booth_config *conf = user_data;
-    struct ticket_config *tk = ticket;      // Used by tk_log_debug()
     timetype last_cron = { 0, };
 
     if (!has_extprog_exited(ticket)
@@ -1369,13 +1372,13 @@ booth__process_ticket(struct ticket_config *ticket, void *user_data)
         return true;
     }
 
-    tk_log_debug("ticket cron");
+    booth__ticket_debug(ticket, "ticket cron");
 
     copy_time(&ticket->next_cron, &last_cron);
     ticket_cron(conf, ticket);
 
     if (time_cmp(&last_cron, &ticket->next_cron, ==)) {
-        tk_log_debug("nobody set ticket wakeup");
+        booth__ticket_debug(ticket, "nobody set ticket wakeup");
         set_ticket_wakeup(ticket);
     }
 
@@ -1457,7 +1460,7 @@ log_next_wakeup(struct ticket_config *tk)
 	int left;
 
 	left = time_left(&tk->next_cron);
-	tk_log_debug("set ticket wakeup in " intfmt(left));
+	booth__ticket_debug(tk, "set ticket wakeup in " intfmt(left));
 }
 
 /* New vote round; §5.2 */
@@ -1486,7 +1489,9 @@ set_ticket_wakeup(struct ticket_config *tk)
 
 	if (!is_manual(tk)) {
 		/* At least every hour, perhaps sooner (default) */
-		tk_log_debug("ticket will be woken up after up to one hour");
+		booth__ticket_debug(tk,
+				    "ticket will be woken up after up to one "
+				    "hour");
 		ticket_next_cron_in(tk, 3600*TIME_RES);
 
 		switch (tk->state) {
@@ -1498,11 +1503,16 @@ set_ticket_wakeup(struct ticket_config *tk)
 			/* If timestamp is in the past, wakeup in
 			* near future */
 			if (!is_time_set(&next_vote)) {
-				tk_log_debug("next ts unset, wakeup soon");
+				booth__ticket_debug(tk,
+						    "next ts unset, wakeup "
+						    "soon");
 				ticket_next_cron_at(tk, &near_future);
 			} else if (is_past(&next_vote)) {
 				int tdiff = time_left(&next_vote);
-				tk_log_debug("next ts in the past " intfmt(tdiff));
+
+				booth__ticket_debug(tk,
+						    "next ts in the past "
+						    intfmt(tdiff));
 				ticket_next_cron_at(tk, &near_future);
 			} else {
 				ticket_next_cron_at(tk, &next_vote);
@@ -1541,7 +1551,9 @@ set_ticket_wakeup(struct ticket_config *tk)
 		/* At least six minutes, to make sure that multi-leader situations
 		 * will be solved promptly.
 		 */
-		tk_log_debug("manual ticket will be woken up after up to six minutes");
+		booth__ticket_debug(tk,
+				    "manual ticket will be woken up after up "
+				    "to six minutes");
 		ticket_next_cron_in(tk, 60 * TIME_RES);
 
 		/* For manual tickets, no earlier timeout could be set in a similar
@@ -1606,7 +1618,7 @@ send_reject(struct booth_config *conf, struct booth_site *dest,
 	int req = ntohl(in_msg->header.cmd);
 	struct boothc_ticket_msg msg;
 
-	tk_log_debug("sending reject to %s", site_string(dest));
+	booth__ticket_debug(tk, "sending reject to %s", site_string(dest));
 	init_ticket_msg(conf, &msg, OP_REJECTED, req, code, 0, tk);
 	return booth_udp_send_auth(conf, dest, &msg, sendmsglen(&msg));
 }

@@ -22,6 +22,7 @@
 #define _LOG_H
 
 #include "b_config.h"
+#include "config.h"     // struct ticket_config
 
 #ifndef LOGGING_LIBQB
 #include <heartbeat/glue_config.h>
@@ -50,15 +51,16 @@
              state_to_string((ticket)->state), (ticket)->current_term,  \
              term_time_left(ticket), ##args)
 
-#define tk_cl_log_src(sev, fmt, args...) \
-	priv_log(sev, "%s:%d: %s (%s/%d/%d): " fmt, \
-	__FUNCTION__, __LINE__, \
-	tk->name, state_to_string(tk->state), tk->current_term, term_time_left(tk), \
-	##args)
+#define booth__ticket_debug(ticket, fmt, args...) do {  \
+        if (ANYDEBUG) {                                 \
+            priv_log(LOG_DEBUG, "%s:%d: %s (%s/%d/%d): " fmt,           \
+                     __FUNCTION__, __LINE__, (ticket)->name,            \
+                     state_to_string((ticket)->state),                  \
+                     (ticket)->current_term, term_time_left(ticket),    \
+                     ##args);                                           \
+        }                                                               \
+    } while (0)
 
-#define tk_log_debug(fmt, args...)		do { \
-	if (ANYDEBUG) tk_cl_log_src(LOG_DEBUG, fmt, ##args); } \
-	while (0)
 #define tk_log_info(fmt, args...) booth__log_ticket(tk, LOG_INFO, fmt, ##args)
 #define tk_log_warn(fmt, args...) booth__log_ticket(tk, LOG_WARNING, fmt,   \
                                                     ##args)

@@ -35,13 +35,18 @@ manual_selection(struct booth_config *conf, struct ticket_config *tk,
                  struct booth_site *preference, int update_term,
                  cmd_reason_t reason)
 {
+	const char *election_reason_s = "";
+
 	if (local->type != SITE) {
 		return 0;
 	}
 
-	tk_log_debug("starting manual selection (caused by %s %s)",
-				state_to_string(reason),
-				reason == OR_AGAIN ? state_to_string(tk->election_reason) : "" );
+	if (reason == OR_AGAIN) {
+		election_reason_s = state_to_string(tk->election_reason);
+	}
+
+	booth__ticket_debug(tk, "starting manual selection (caused by %s %s)",
+			    state_to_string(reason), election_reason_s);
 
 	// Manual selection is done without any delay, the leader is assigned
 	set_leader(tk, local);

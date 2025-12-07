@@ -58,7 +58,8 @@ bool booth__foreach_const_ticket(const struct booth_config *conf,
 	} \
 	\
 	tk->leader = who; \
-	tk_log_debug("ticket leader set to %s", ticket_leader_string(tk)); \
+	booth__ticket_debug(tk, "ticket leader set to %s",  \
+			    ticket_leader_string(tk));	    \
 	\
 	if (tk->leader) { \
 		mark_ticket_as_granted(tk, tk->leader); \
@@ -68,14 +69,18 @@ bool booth__foreach_const_ticket(const struct booth_config *conf,
 #define mark_ticket_as_granted(tk, who) do { \
 	if (is_manual(tk) && (who->index > -1)) { \
 		tk->sites_where_granted[who->index] = true; \
-		tk_log_debug("manual ticket marked as granted to %s", ticket_leader_string(tk)); \
+		booth__ticket_debug(tk,					     \
+				    "manual ticket marked as granted to %s", \
+				    ticket_leader_string(tk));		     \
 	} \
 } while(0)
 
 #define mark_ticket_as_revoked(tk, who) do { \
 	if (is_manual(tk) && who && (who->index > -1)) { \
 		tk->sites_where_granted[who->index] = false; \
-		tk_log_debug("manual ticket marked as revoked from %s", site_string(who)); \
+		booth__ticket_debug(tk,					       \
+				    "manual ticket marked as revoked from %s", \
+				    site_string(who));			       \
 	} \
 } while(0)
 
@@ -86,14 +91,19 @@ bool booth__foreach_const_ticket(const struct booth_config *conf,
 } while(0)
 
 #define set_state(tk, newst) do { \
-	tk_log_debug("state transition: %s -> %s", \
-		state_to_string(tk->state), state_to_string(newst)); \
+	booth__ticket_debug(tk, "state transition: %s -> %s",	\
+			    state_to_string(tk->state),		\
+			    state_to_string(newst));		\
 	tk->state = newst; \
 } while(0)
 
 #define set_next_state(tk, newst) do { \
-	if (!(newst)) tk_log_debug("next state reset"); \
-	else tk_log_debug("next state set to %s", state_to_string(newst)); \
+	if (!(newst)) {						\
+		booth__ticket_debug(tk, "next state reset");	\
+	} else {						\
+		booth__ticket_debug(tk, "next state set to %s",	\
+				    state_to_string(newst));	\
+	}							\
 	tk->next_state = newst; \
 } while(0)
 
@@ -280,7 +290,7 @@ static inline void
 ticket_activate_timeout(struct ticket_config *tk)
 {
 	/* TODO: increase timeout when no answers */
-	tk_log_debug("activate ticket timeout in %d", tk->timeout);
+	booth__ticket_debug(tk, "activate ticket timeout in %d", tk->timeout);
 	ticket_next_cron_in(tk, tk->timeout);
 }
 

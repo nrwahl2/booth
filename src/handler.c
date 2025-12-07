@@ -38,13 +38,13 @@
 #include "booth.h"
 #include "handler.h"
 
-#define set_progstate(tk, state) do {                       \
-        if ((state) == EXTPROG_IDLE) {                      \
-            tk_log_debug("progstate reset");                \
-        } else {                                            \
-            tk_log_debug("progstate set to %d", (state));   \
-        }                                                   \
-        tk->clu_test.progstate = (state);                   \
+#define set_progstate(ticket, state) do {                               \
+        if ((state) == EXTPROG_IDLE) {                                  \
+            booth__ticket_debug(ticket, "progstate reset");             \
+        } else {                                                        \
+            booth__ticket_debug(ticket, "progstate set to %d", state);  \
+        }                                                               \
+        ticket->clu_test.progstate = (state);                           \
     } while (0)
 
 static int
@@ -85,7 +85,7 @@ run_ext_prog(const struct booth_config *conf, struct ticket_config *tk,
 		_exit(1);
 	}
 	closefiles(); /* don't leak open files */
-	tk_log_debug("running handler %s", prog);
+	booth__ticket_debug(tk, "running handler %s", prog);
 	execv(prog, tk->clu_test.argv);
 	tk_log_error("%s: execv failed (%s)", prog, strerror(errno));
 	_exit(1);
@@ -117,8 +117,8 @@ test_exit_status(struct ticket_config *tk, char *prog, int status, int log_msg)
 			tk_log_warn("we are not allowed to acquire ticket");
 		}
 	} else {
-		tk_log_debug("handler \"%s\" exited with success",
-			prog);
+		booth__ticket_debug(tk, "handler \"%s\" exited with success",
+				    prog);
 	}
 	return rv;
 }
@@ -144,7 +144,6 @@ tk_test_exit_status(struct ticket_config *tk)
 bool
 booth__wait_ticket_test(struct ticket_config *ticket, void *user_data)
 {
-    struct ticket_config *tk = ticket;  // Used by tk_log_debug()
     struct clu_test *test_prog = &ticket->clu_test;
     int status = 0;
 
@@ -233,7 +232,8 @@ process_ext_dir(const struct booth_config *conf, struct ticket_config *tk)
 	signal(SIGCHLD, SIG_DFL);
 	signal(SIGUSR1, SIG_DFL);
 	signal(SIGINT, SIG_DFL);
-	tk_log_debug("running programs in directory %s", tk->clu_test.path);
+	booth__ticket_debug(tk, "running programs in directory %s",
+			    tk->clu_test.path);
 	n_progs = scandir(tk->clu_test.path, &proglist, prog_filter, alphasort);
 	if (n_progs == -1) {
 		tk_log_error("%s: scandir failed (%s)", tk->clu_test.path, strerror(errno));
