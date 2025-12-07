@@ -1008,34 +1008,53 @@ booth_udp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
 	return booth_udp_send(conf, to, buf, len);
 }
 
+struct udp_broadcast_auth_one_data {
+    struct booth_config *conf;
+    void *buf;
+    const int len;
+    int rc;
+};
+
+static bool
+udp_broadcast_auth_one(struct booth_site *site, void *user_data)
+{
+    struct udp_broadcast_auth_one_data *data = user_data;
+    int rc = 0;
+
+    if (site == local) {
+        return true;
+    }
+
+    rc = booth_udp_send(data->conf, site, data->buf, data->len);
+    if (data->rc == 0) {
+        data->rc = rc;
+    }
+
+    return true;
+}
+
 static int
 booth_udp_broadcast_auth(struct booth_config *conf, void *buf, int len)
 {
-	int i, rv, rvs;
-	struct booth_site *site;
+    int rc = 0;
+    struct udp_broadcast_auth_one_data data = {
+        .conf = conf,
+        .buf = buf,
+        .len = len,
+        .rc = 0,
+    };
 
-	if (!conf || !conf->site_count) {
-		return -1;
-	}
+    if ((conf == NULL) || (conf->site_count == 0)) {
+        return -1;
+    }
 
-	rv = add_hmac(conf, buf, len);
-	if (rv < 0) {
-		return rv;
-	}
+    rc = add_hmac(conf, buf, len);
+    if (rc < 0) {
+        return rc;
+    }
 
-	rvs = 0;
-	FOREACH_NODE(conf, i, site) {
-		if (site == local) {
-			continue;
-		}
-
-		rv = booth_udp_send(conf, site, buf, len);
-		if (!rvs) {
-			rvs = rv;
-		}
-	}
-
-	return rvs;
+    booth__foreach_site(conf, udp_broadcast_auth_one, &data);
+    return data.rc;
 }
 
 static int
