@@ -862,12 +862,6 @@ booth_tcp_close(struct booth_site *to)
 }
 
 static int
-booth_tcp_exit(void)
-{
-	return 0;
-}
-
-static int
 setup_udp_server(void)
 {
 	int rv, fd;
@@ -1058,12 +1052,6 @@ booth_udp_broadcast_auth(struct booth_config *conf, void *buf, int len)
 }
 
 static int
-booth_udp_exit(void)
-{
-	return 0;
-}
-
-static int
 return_0_booth_site(struct booth_site *v __attribute__((unused)))
 {
 	return 0;
@@ -1078,7 +1066,6 @@ const struct booth_transport booth_transport[TRANSPORT_ENTRIES] = {
 		.recv = booth_tcp_recv,
 		.recv_auth = booth_tcp_recv_auth,
 		.close = booth_tcp_close,
-		.exit = booth_tcp_exit
 	},
 	[UDP] = {
 		.name = "UDP",
@@ -1088,7 +1075,6 @@ const struct booth_transport booth_transport[TRANSPORT_ENTRIES] = {
 		.send_auth = booth_udp_send_auth,
 		.close = return_0_booth_site,
 		.broadcast_auth = booth_udp_broadcast_auth,
-		.exit = booth_udp_exit
 	},
 };
 

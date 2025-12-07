@@ -52,7 +52,6 @@ struct booth_transport {
 	int (*recv_auth) (struct booth_config *, struct booth_site *, void *, int);
 	int (*broadcast_auth) (struct booth_config *, void *, int);
 	int (*close) (struct booth_site *);
-	int (*exit) (void);
 };
 
 extern const struct booth_transport booth_transport[TRANSPORT_ENTRIES];
