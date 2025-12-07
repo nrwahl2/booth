@@ -85,64 +85,94 @@ get_site_addr(const struct booth_site *site)
     }
 }
 
+struct check_site_address_data {
+    const unsigned char *ipaddr;
+    const struct ifaddrmsg *ifa;
+    const bool fuzzy_allowed;
+    struct booth_site **me;
+    int *address_bits_matched;
+    const int bytes;
+    const int mask;
+};
+
+static bool
+check_site_address(const struct booth_site *site, void *user_data)
+{
+    struct check_site_address_data *data = user_data;
+    int matched = 0;
+    const unsigned char *site_addr = NULL;
+    unsigned char site_bits = 0;
+    unsigned char ip_bits = 0;
+
+    if (data->ifa->ifa_family != site->family) {
+        return true;
+    }
+
+    site_addr = get_site_addr(site);
+
+    for (; matched < site->addrlen; matched++) {
+        if (data->ipaddr[matched] != site_addr[matched]) {
+            break;
+        }
+    }
+
+    if (matched == site->addrlen) {
+        *data->address_bits_matched = matched * 8;
+
+        // Cast away const for output argument
+        *data->me = (struct booth_site *) site;
+
+        // Exact match found, so stop iterating
+        return false;
+    }
+
+    if (!data->fuzzy_allowed) {
+        return true;
+    }
+
+    // Check prefix, whole bytes
+    if (matched < data->bytes) {
+        return true;
+    }
+
+    if ((matched * 8) < *data->address_bits_matched) {
+        return true;
+    }
+
+    site_bits = site_addr[data->bytes];
+    ip_bits = data->ipaddr[data->bytes];
+    if (((site_bits ^ ip_bits) & data->mask) == 0) {
+        // At least prefixlen bits matched
+        *data->address_bits_matched = data->ifa->ifa_prefixlen;
+
+        // Cast away const for output argument
+        *data->me = (struct booth_site *) site;
+    }
+
+    // Continue iterating to try to find an exact match
+    return true;
+}
+
 static void
-find_address(struct booth_config *conf, unsigned char ipaddr[BOOTH_IPADDR_LEN],
+find_address(struct booth_config *conf, const unsigned char *ipaddr,
              const struct ifaddrmsg *ifa, bool fuzzy_allowed,
              struct booth_site **me, int *address_bits_matched)
 {
-	int i = 0;
-	struct booth_site *site = NULL;
-	int bytes = ifa->ifa_prefixlen / 8;
-	int bits_left = ifa->ifa_prefixlen % 8;
+    const int bits_left = ifa->ifa_prefixlen % 8;
 
-	// One bit left to check means to ignore the seven lowest bits
-	int mask = ~((1 << (8 - bits_left)) - 1);
+    struct check_site_address_data data = {
+        .ipaddr = ipaddr,
+        .fuzzy_allowed = fuzzy_allowed,
+        .me = me,
+        .address_bits_matched = address_bits_matched,
+        .ifa = ifa,
+        .bytes = ifa->ifa_prefixlen / 8,
 
-	FOREACH_NODE(conf, i, site) {
-		int matched = 0;
-		const unsigned char *site_addr = NULL;
-		unsigned char site_bits = 0;
-		unsigned char ip_bits = 0;
+        // One bit left to check means ignore the seven lowest bits
+        .mask = ~((1 << (8 - bits_left)) - 1),
+    };
 
-		if (ifa->ifa_family != site->family) {
-			continue;
-		}
-
-		site_addr = get_site_addr(site);
-
-		for (; matched < site->addrlen; matched++) {
-			if (ipaddr[matched] != site_addr[matched]) {
-				break;
-			}
-		}
-
-		if (matched == site->addrlen) {
-			*address_bits_matched = matched * 8;
-			*me = site;
-			break;
-		}
-
-		if (!fuzzy_allowed) {
-			continue;
-		}
-
-		/* Check prefix, whole bytes */
-		if (matched < bytes) {
-			continue;
-		}
-
-		if (matched * 8 < *address_bits_matched) {
-			continue;
-		}
-
-		site_bits = site_addr[bytes];
-		ip_bits = ipaddr[bytes];
-		if (((site_bits ^ ip_bits) & mask) == 0) {
-			/* _At_least_ prefixlen bits matched. */
-			*address_bits_matched = ifa->ifa_prefixlen;
-			*me = site;
-		}
-	}
+    booth__foreach_const_site(conf, check_site_address, &data);
 }
 
 static int
