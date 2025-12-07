@@ -19,6 +19,7 @@
 
 #include "b_config.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -78,10 +79,9 @@
 
 #define CLIENT_NALLOC		32
 
-static int daemonize = 1;
-int enable_stderr = 0;
+static bool daemonize = true;
+static bool enable_stderr = false;
 timetype start_time;
-
 
 /** Structure for "clients".
  * Filehandles with incoming data get registered here (and in pollfds),
@@ -89,10 +89,9 @@ timetype start_time;
  * Because these can be reallocated with every new fd, addressing
  * happens _only_ by their numeric index. */
 struct client *clients = NULL;
-struct pollfd *pollfds = NULL;
+static struct pollfd *pollfds = NULL;
 static int client_maxi;
 static int client_size = 0;
-
 
 static const struct booth_site _no_leader = {
 	.addr_string = "none",
@@ -114,10 +113,10 @@ struct command_line cl;
 /*
  * Global signal handlers variables
  */
-static int sig_exit_handler_called = 0;
+static bool sig_exit_handler_called = false;
 static int sig_exit_handler_sig = 0;
-static int sig_usr1_handler_called = 0;
-static int sig_chld_handler_called = 0;
+static bool sig_usr1_handler_called = false;
+static bool sig_chld_handler_called = false;
 
 static const char *
 state_string(BOOTH_DAEMON_STATE st)
@@ -485,11 +484,11 @@ process_signals(struct booth_config *conf)
 		return 1;
 	}
 	if (sig_usr1_handler_called) {
-		sig_usr1_handler_called = 0;
+		sig_usr1_handler_called = false;
 		booth__foreach_ticket(conf, booth__log_ticket_info, NULL);
 	}
 	if (sig_chld_handler_called) {
-		sig_chld_handler_called = 0;
+		sig_chld_handler_called = false;
 		booth__foreach_ticket(conf, booth__wait_ticket_test, NULL);
 	}
 
@@ -1155,8 +1154,8 @@ read_arguments(int argc, char **argv)
 			break;
 
 		case 'S':
-			daemonize = 0;
-			enable_stderr = 1;
+			daemonize = false;
+			enable_stderr = true;
 			break;
 
 		case 'l':
@@ -1453,19 +1452,19 @@ static void
 sig_exit_handler(int sig)
 {
 	sig_exit_handler_sig = sig;
-	sig_exit_handler_called = 1;
+	sig_exit_handler_called = true;
 }
 
 static void
 sig_usr1_handler(int sig)
 {
-	sig_usr1_handler_called = 1;
+	sig_usr1_handler_called = true;
 }
 
 static void
 sig_chld_handler(int sig)
 {
-	sig_chld_handler_called = 1;
+	sig_chld_handler_called = true;
 }
 
 static int

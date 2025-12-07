@@ -347,8 +347,6 @@ struct client {
 };
 
 extern struct client *clients;
-extern struct pollfd *pollfds;
-
 
 int client_add(int fd, const struct booth_transport *tpt,
 		workfn_t workfn, void (*deadfn)(int ci));
