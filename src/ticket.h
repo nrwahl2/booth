@@ -35,6 +35,10 @@ extern int TIME_RES;
 #define DEFAULT_TICKET_TIMEOUT	(5*TIME_RES)
 #define DEFAULT_RETRIES			10
 
+bool booth__foreach_site(struct booth_config *conf,
+                         bool (*fn)(struct booth_site *, void *),
+                         void *user_data);
+
 bool booth__foreach_const_site(const struct booth_config *conf,
                                bool (*fn)(const struct booth_site *, void *),
                                void *user_data);
