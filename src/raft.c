@@ -96,9 +96,8 @@ update_ticket_from_msg(struct ticket_config *tk, struct booth_site *sender,
 {
 	int duration;
 
-	tk_log_info("updating from %s (%d/%d)",
-		site_string(sender),
-		ntohl(msg->ticket.term), msg_term_time(msg));
+	booth__ticket_info(tk, "updating from %s (%d/%d)", site_string(sender),
+			   ntohl(msg->ticket.term), msg_term_time(msg));
 	duration = min(tk->term_duration, msg_term_time(msg));
 	set_ticket_expiry(tk, duration);
 	update_term_from_msg(tk, msg);
@@ -273,19 +272,19 @@ elections_end(struct booth_config *conf, struct ticket_config *tk)
 
 	if (is_past(&tk->election_end)) {
 		/* This is previous election timed out */
-		tk_log_info("elections finished");
+		booth__ticket_info(tk, "elections finished");
 	}
 
 	tk->in_election = false;
 	new_leader = majority_votes(conf, tk);
 	if (new_leader == local) {
 		won_elections(conf, tk);
-		tk_log_info("granted successfully here");
+		booth__ticket_info(tk, "granted successfully here");
 	} else if (new_leader) {
-		tk_log_info("ticket granted at %s",
-				site_string(new_leader));
+		booth__ticket_info(tk, "ticket granted at %s",
+				   site_string(new_leader));
 	} else {
-		tk_log_info("nobody won elections, new elections");
+		booth__ticket_info(tk, "nobody won elections, new elections");
 		tk->outcome = RLT_MORE;
 		foreach_tkt_req(conf, tk, notify_client);
 		if (!new_election(conf, tk, NULL, is_tie(conf, tk) ? 2 : 0, OR_AGAIN)) {
@@ -315,10 +314,11 @@ newer_term(struct ticket_config *tk, struct booth_site *sender,
 	set_state(tk, ST_FOLLOWER);
 	if (!in_election) {
 		set_leader(tk, leader);
-		tk_log_info("from %s: higher term %d vs. %d, following %s",
-				site_string(sender),
-				term, tk->current_term,
-				ticket_leader_string(tk));
+		booth__ticket_info(tk,
+				   "from %s: higher term %d vs. %d, "
+				   "following %s",
+				   site_string(sender), term, tk->current_term,
+				   ticket_leader_string(tk));
 	} else {
 		booth__ticket_debug(tk,
 				    "from %s: higher term %d vs. %d (election)",
@@ -342,8 +342,8 @@ msg_term_invalid(struct ticket_config *tk, struct booth_site *sender,
 		return 0;
 	}
 
-	tk_log_info("got invalid term from %s "
-		"(%d), ignoring", site_string(sender), term);
+	booth__ticket_info(tk, "got invalid term from %s (%d), ignoring",
+			   site_string(sender), term);
 	return 1;
 }
 
@@ -360,10 +360,10 @@ term_too_low(struct booth_config *conf, struct ticket_config *tk,
 		return 0;
 	}
 
-	tk_log_info("sending reject to %s, its term too low "
-		"(%d vs. %d)", site_string(sender),
-		term, tk->current_term
-		);
+	booth__ticket_info(tk,
+			   "sending reject to %s, its term too low (%d vs. %d)",
+			   site_string(sender), term, tk->current_term);
+
 	send_reject(conf, sender, tk, RLT_TERM_OUTDATED, msg);
 	return 1;
 }
@@ -384,8 +384,11 @@ answer_HEARTBEAT(struct booth_config *conf, struct ticket_config *tk,
 
 	if (term < tk->current_term) {
 		if (sender == tk->leader) {
-			tk_log_info("trusting leader %s with a lower term (%d vs %d)",
-				site_string(leader), term, tk->current_term);
+			booth__ticket_info(tk,
+					   "trusting leader %s with a lower "
+					   "term (%d vs %d)",
+					   site_string(leader), term,
+					   tk->current_term);
 		} else if (is_owned(tk)) {
 			tk_log_warn("different leader %s with a lower term "
 					"(%d vs %d), sending reject",
@@ -467,8 +470,8 @@ process_REVOKE(struct booth_config *conf, struct ticket_config *tk,
 				state_to_string(tk->state));
 		return -1;
 	} else {
-		tk_log_info("%s revokes ticket",
-				site_string(tk->leader));
+		booth__ticket_info(tk, "%s revokes ticket",
+				   site_string(tk->leader));
 		save_committed_tkt(tk);
 		reset_ticket_and_set_no_leader(tk);
 		ticket_write(conf, tk);
@@ -537,8 +540,10 @@ process_VOTE_FOR(struct booth_config *conf, struct ticket_config *tk,
 		/* leader wants to step down? */
 		if (sender == tk->leader &&
 			(tk->state == ST_FOLLOWER || tk->state == ST_CANDIDATE)) {
-			tk_log_info("%s wants to give the ticket away (ticket release)",
-				site_string(tk->leader));
+			booth__ticket_info(tk,
+					   "%s wants to give the ticket away "
+					   "(ticket release)",
+					   site_string(tk->leader));
 			save_committed_tkt(tk);
 			reset_ticket(tk);
 			set_state(tk, ST_FOLLOWER);
@@ -547,16 +552,19 @@ process_VOTE_FOR(struct booth_config *conf, struct ticket_config *tk,
 				schedule_election(tk, OR_STEPDOWN);
 			}
 		} else {
-			tk_log_info("%s votes for none, ignoring (duplicate ticket release?)",
-				site_string(sender));
+			booth__ticket_info(tk,
+					   "%s votes for none, ignoring "
+					   "(duplicate ticket release?)",
+					   site_string(sender));
 		}
 		return 0;
 	}
 
 	if (tk->state != ST_CANDIDATE) {
 		/* lost candidate status, somebody rejected our proposal */
-		tk_log_info("candidate status lost, ignoring VtFr from %s",
-			site_string(sender));
+		booth__ticket_info(tk,
+				   "candidate status lost, ignoring VtFr "
+				   "from %s", site_string(sender));
 		return 0;
 	}
 
@@ -789,8 +797,9 @@ new_election(struct booth_config *conf, struct ticket_config *tk,
 
 	if ((is_reason(OR_TKT_LOST, tk) || is_reason(OR_STEPDOWN, tk)) &&
 			check_attr_prereq(tk, GRANT_AUTO)) {
-		tk_log_info("attribute prerequisite not met, "
-			"not starting elections");
+		booth__ticket_info(tk,
+				   "attribute prerequisite not met, not "
+				   "starting elections");
 		return 0;
 	}
 
@@ -843,8 +852,8 @@ new_election(struct booth_config *conf, struct ticket_config *tk,
 	set_future_time(&tk->election_end, tk->timeout);
 	tk->in_election = true;
 
-	tk_log_info("starting new election (term=%d)",
-			tk->current_term);
+	booth__ticket_info(tk, "starting new election (term=%d)",
+			   tk->current_term);
 	clear_election(conf, tk);
 
 	new_leader = preference ? preference : local;
@@ -912,8 +921,8 @@ process_MY_INDEX(struct booth_config *conf, struct ticket_config *tk,
 		/* let them know about our newer ticket */
 		send_msg(conf, OP_MY_INDEX, tk, sender, msg);
 		if (tk->state == ST_LEADER) {
-			tk_log_info("sending ticket update to %s",
-					site_string(sender));
+			booth__ticket_info(tk, "sending ticket update to %s",
+					   site_string(sender));
 			return send_msg(conf, OP_UPDATE, tk, sender, msg);
 		}
 	}
