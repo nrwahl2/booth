@@ -112,9 +112,11 @@ test_exit_status(struct ticket_config *tk, char *prog, int status, int log_msg)
 	}
 	if (rv) {
 		if (log_msg) {
-			tk_log_warn("handler \"%s\" failed: %s",
-				prog, interpret_rv(status));
-			tk_log_warn("we are not allowed to acquire ticket");
+			booth__ticket_warn(tk, "handler \"%s\" failed: %s",
+					   prog, interpret_rv(status));
+			booth__ticket_warn(tk,
+					   "we are not allowed to acquire "
+					   "ticket");
 		}
 	} else {
 		booth__ticket_debug(tk, "handler \"%s\" exited with success",
@@ -197,7 +199,7 @@ ignore_rest(int sig)
 void
 ext_prog_timeout(struct ticket_config *tk)
 {
-	tk_log_warn("handler timed out");
+	booth__ticket_warn(tk, "handler timed out");
 }
 
 int

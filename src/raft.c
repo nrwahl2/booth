@@ -60,11 +60,12 @@ record_vote(struct ticket_config *tk, struct booth_site *who,
 		tk->votes_for[who->index] = vote;
 		tk->votes_received |= who->bitmask;
 	} else if (tk->votes_for[who->index] != vote) {
-		tk_log_warn("%s voted previously "
-			    "for %s and now wants to vote for %s (ignored)",
-			    site_string(who),
-			    site_string(tk->votes_for[who->index]),
-			    site_string(vote));
+		booth__ticket_warn(tk,
+				   "%s voted previously for %s and now wants "
+				   "to vote for %s (ignored)",
+				   site_string(who),
+				   site_string(tk->votes_for[who->index]),
+				   site_string(vote));
 	}
 }
 
@@ -390,9 +391,11 @@ answer_HEARTBEAT(struct booth_config *conf, struct ticket_config *tk,
 					   site_string(leader), term,
 					   tk->current_term);
 		} else if (is_owned(tk)) {
-			tk_log_warn("different leader %s with a lower term "
-					"(%d vs %d), sending reject",
-				site_string(leader), term, tk->current_term);
+			booth__ticket_warn(tk,
+					   "different leader %s with a lower "
+					   "term (%d vs %d), sending reject",
+					   site_string(leader), term,
+					   tk->current_term);
 			return send_reject(conf, sender, tk, RLT_TERM_OUTDATED,
 					   msg);
 		}
@@ -420,9 +423,10 @@ process_UPDATE(struct booth_config *conf, struct ticket_config *tk,
                struct boothc_ticket_msg *msg)
 {
 	if (is_owned(tk) && sender != tk->leader) {
-		tk_log_warn("different leader %s wants to update "
-				"our ticket, sending reject",
-			site_string(leader));
+		booth__ticket_warn(tk,
+				   "different leader %s wants to update our "
+				   "ticket, sending reject",
+				   site_string(leader));
 
 		mark_ticket_as_granted(tk, sender);
 		return send_reject(conf, sender, tk, RLT_TERM_OUTDATED, msg);
@@ -494,9 +498,8 @@ process_ACK(struct booth_config *conf, struct ticket_config *tk,
 
 	if (newer_term(tk, sender, leader, msg, 0)) {
 		/* unexpected higher term */
-		tk_log_warn("got higher term from %s (%d vs. %d)",
-				site_string(sender),
-				term, tk->current_term);
+		booth__ticket_warn(tk, "got higher term from %s (%d vs. %d)",
+				   site_string(sender), term, tk->current_term);
 		return 0;
 	}
 
@@ -504,10 +507,10 @@ process_ACK(struct booth_config *conf, struct ticket_config *tk,
 	if (term < tk->current_term) {
 		/* Doesn't know what he's talking about - perhaps
 		 * doesn't receive our packets? */
-		tk_log_warn("unexpected term "
-				"from %s (%d vs. %d) (ignoring)",
-				site_string(sender),
-				term, tk->current_term);
+		booth__ticket_warn(tk,
+				   "unexpected term from %s (%d vs. %d) "
+				   "(ignoring)",
+				   site_string(sender), term, tk->current_term);
 		return 0;
 	}
 
@@ -602,18 +605,19 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 		/* the sender has us as the leader (!)
 		 * the elections will time out, then we can try again
 		 */
-		tk_log_warn("ticket was granted to us "
-				"(and we didn't know)");
+		booth__ticket_warn(tk,
+				   "ticket was granted to us (and we didn't "
+				   "know)");
 		tk->expect_more_rejects = true;
 		return 0;
 	}
 
 	if (tk->state == ST_CANDIDATE &&
 			rv == RLT_TERM_OUTDATED) {
-		tk_log_warn("ticket outdated (term %d), granted to %s",
-				ntohl(msg->ticket.term),
-				site_string(leader)
-				);
+		booth__ticket_warn(tk,
+				   "ticket outdated (term %d), granted to %s",
+				   ntohl(msg->ticket.term),
+				   site_string(leader));
 		set_leader(tk, leader);
 		tk->expect_more_rejects = true;
 		become_follower(conf, tk, msg);
@@ -624,17 +628,20 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 			rv == RLT_TERM_STILL_VALID) {
 		if (tk->lost_leader == leader) {
 			if (tk->election_reason == OR_TKT_LOST) {
-				tk_log_warn("%s still has the ticket valid, "
-						"we'll backup a bit",
-						site_string(sender));
+				booth__ticket_warn(tk,
+						   "%s still has the ticket "
+						   "valid, we'll backup a bit",
+						   site_string(sender));
 			} else {
-				tk_log_warn("%s unexpectedly rejects elections",
-						site_string(sender));
+				booth__ticket_warn(tk,
+						   "%s unexpectedly rejects "
+						   "elections",
+						   site_string(sender));
 			}
 		} else {
-			tk_log_warn("ticket was granted to %s "
-					"(and we didn't know)",
-					site_string(leader));
+			booth__ticket_warn(tk,
+					   "ticket was granted to %s (and we "
+					   "didn't know)", site_string(leader));
 		}
 		set_leader(tk, leader);
 		become_follower(conf, tk, msg);
@@ -647,11 +654,14 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 		set_leader(tk, leader);
 		tk->expect_more_rejects = true;
 		if (leader && leader != no_leader) {
-			tk_log_warn("our ticket is outdated, granted to %s",
-				site_string(leader));
+			booth__ticket_warn(tk,
+					   "our ticket is outdated, granted to "
+					   "%s", site_string(leader));
 			become_follower(conf, tk, msg);
 		} else {
-			tk_log_warn("our ticket is outdated and revoked");
+			booth__ticket_warn(tk,
+					   "our ticket is outdated and "
+					   "revoked");
 			update_ticket_from_msg(tk, sender, msg);
 			set_state(tk, ST_INIT);
 		}
@@ -659,10 +669,12 @@ process_REJECTED(const struct booth_config *conf, struct ticket_config *tk,
 	}
 
 	if (!tk->expect_more_rejects) {
-		tk_log_warn("from %s: in state %s, got %s (unexpected reject)",
-				site_string(sender),
-				state_to_string(tk->state),
-				state_to_string(rv));
+		booth__ticket_warn(tk,
+				   "from %s: in state %s, got %s (unexpected "
+				   "reject)",
+				   site_string(sender),
+				   state_to_string(tk->state),
+				   state_to_string(rv));
 	}
 
 	return 0;
@@ -701,17 +713,19 @@ test_reason(struct ticket_config *tk, struct booth_site *sender,
 
 	if (tk->state == ST_INIT &&
 			tk->leader == no_leader) {
-		tk_log_warn("%s claims that the ticket is lost, "
-				"but it's in %s state (reject sent)",
-				site_string(sender),
-				state_to_string(tk->state)
+		booth__ticket_warn(tk,
+				   "%s claims that the ticket is lost, but "
+				   "it's in %s state (reject sent)",
+				   site_string(sender),
+				   state_to_string(tk->state)
 			);
 		return RLT_YOU_OUTDATED;
 	}
 	if (ticket_seems_ok(tk)) {
-		tk_log_warn("%s claims that the ticket is lost, "
-				"but it is ok here (reject sent)",
-				site_string(sender));
+		booth__ticket_warn(tk,
+				   "%s claims that the ticket is lost, but it "
+				   "is ok here (reject sent)",
+				   site_string(sender));
 		return RLT_TERM_STILL_VALID;
 	}
 
@@ -740,10 +754,12 @@ answer_REQ_VOTE(struct booth_config *conf, struct ticket_config *tk,
 	/* valid tickets are not allowed only if the sender thinks
 	 * the ticket got lost */
 	if (sender != tk->leader && valid && reason != OR_STEPDOWN) {
-		tk_log_warn("election from %s with reason %s rejected "
-			"(we have %s as ticket owner), ticket still valid for %ds",
-			site_string(sender), state_to_string(reason),
-			site_string(tk->leader), valid);
+		booth__ticket_warn(tk,
+				   "election from %s with reason %s rejected "
+				   "(we have %s as ticket owner), ticket still "
+				   "valid for %ds",
+				   site_string(sender), state_to_string(reason),
+				   site_string(tk->leader), valid);
 		return send_reject(conf, sender, tk, RLT_TERM_STILL_VALID, msg);
 	}
 
@@ -943,10 +959,10 @@ process_MY_INDEX(struct booth_config *conf, struct ticket_config *tk,
 		if (i < 0) {
 			/* they have a newer ticket, trouble if we're already leader
 			 * for it */
-			tk_log_warn("from %s: more up to date ticket at %s",
-					site_string(sender),
-					site_string(leader)
-					);
+			booth__ticket_warn(tk,
+					   "from %s: more up to date ticket "
+					   "at %s", site_string(sender),
+					   site_string(leader));
 			return leader_handle_newer_ticket(tk, sender, leader, msg);
 		}
 
@@ -1016,10 +1032,10 @@ raft_answer(struct booth_config *conf, struct ticket_config *tk,
 				tk->state == ST_CANDIDATE)) {
 			rv = answer_HEARTBEAT(conf, tk, sender, leader, msg);
 		} else {
-			tk_log_warn("unexpected message %s, from %s",
-				state_to_string(cmd),
-				site_string(sender));
-				mark_ticket_as_granted(tk, sender);
+			booth__ticket_warn(tk, "unexpected message %s, from %s",
+					   state_to_string(cmd),
+					   site_string(sender));
+					   mark_ticket_as_granted(tk, sender);
 
 			if (ticket_seems_ok(tk)) {
 				send_reject(conf, sender, tk, RLT_TERM_STILL_VALID, msg);
@@ -1034,9 +1050,9 @@ raft_answer(struct booth_config *conf, struct ticket_config *tk,
 				tk->state == ST_CANDIDATE)) {
 			rv = process_UPDATE(conf, tk, sender, leader, msg);
 		} else {
-			tk_log_warn("unexpected message %s, from %s",
-				state_to_string(cmd),
-				site_string(sender));
+			booth__ticket_warn(tk, "unexpected message %s, from %s",
+					   state_to_string(cmd),
+					   site_string(sender));
 
 			if (ticket_seems_ok(tk)) {
 				send_reject(conf, sender, tk, RLT_TERM_STILL_VALID, msg);

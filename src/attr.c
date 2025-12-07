@@ -271,11 +271,15 @@ store_geo_attr(struct ticket_config *tk, const char *name, const char *val,
 	}
 
 	if (strnlen(name, BOOTH_NAME_LEN) == BOOTH_NAME_LEN)
-		tk_log_warn("name of the attribute too long (%d+ bytes), skipped",
-			 BOOTH_NAME_LEN);
+		booth__ticket_warn(tk,
+				   "name of the attribute too long "
+				   "(%d+ bytes), skipped",
+				   BOOTH_NAME_LEN);
 	else if (strnlen(val, BOOTH_ATTRVAL_LEN) == BOOTH_ATTRVAL_LEN)
-		tk_log_warn("value of the attribute too long (%d+ bytes), skipped",
-			 BOOTH_ATTRVAL_LEN);
+		booth__ticket_warn(tk,
+				   "value of the attribute too long "
+				   "(%d+ bytes), skipped",
+				   BOOTH_ATTRVAL_LEN);
 	else {
 		a = (struct geo_attr *)calloc(1, sizeof(struct geo_attr));
 		if (!a) {

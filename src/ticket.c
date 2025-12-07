@@ -392,7 +392,7 @@ check_attr_prereq(struct ticket_config *tk, grant_type_e grant_type)
 	return 0;
 
 fail:
-	tk_log_warn("'%s' attr-prereq failed", ap->attr_name);
+	booth__ticket_warn(tk, "'%s' attr-prereq failed", ap->attr_name);
 	return 1;
 }
 
@@ -419,7 +419,9 @@ do_ext_prog(struct booth_config *conf, struct ticket_config *tk,
 	case EXTPROG_IDLE:
 		rv = run_handler(conf, tk);
 		if (rv == RUNCMD_ERR) {
-			tk_log_warn("couldn't run external test, not allowed to acquire ticket");
+			booth__ticket_warn(tk,
+					   "couldn't run external test, not "
+					   "allowed to acquire ticket");
 			ext_prog_failed(conf, tk, start_election);
 		}
 		break;
@@ -502,9 +504,12 @@ do_grant_ticket(struct booth_config *conf, struct ticket_config *tk,
 			/* -F flag has been used while granting a manual ticket.
 			 * The ticket will be granted and may end up being granted
 			 * on multiple sites */
-			tk_log_warn("manual ticket forced to be granted! be aware that "
-				    "you may end up having two sites holding the same manual "
-				    "ticket! revoke the ticket from the unnecessary site!");
+			booth__ticket_warn(tk,
+					   "manual ticket forced to be "
+					   "granted! be aware that you may end "
+					   "up having two sites holding the "
+					   "same manual ticket! revoke the "
+					   "ticket from the unnecessary site!");
 		} else {
 			return RLT_OVERGRANT;
 		}
@@ -513,9 +518,10 @@ do_grant_ticket(struct booth_config *conf, struct ticket_config *tk,
 	set_future_time(&tk->delay_commit, tk->term_duration + tk->acquire_after);
 
 	if (options & OPT_IMMEDIATE) {
-		tk_log_warn("granting ticket immediately! If there are "
-			    "unreachable sites, _hope_ you are sure that they don't "
-			    "have the ticket!");
+		booth__ticket_warn(tk,
+				   "granting ticket immediately! If there are "
+				   "unreachable sites, _hope_ you are sure "
+				   "that they don't have the ticket!");
 		time_reset(&tk->delay_commit);
 	}
 
@@ -748,8 +754,9 @@ log_reacquire_reason(struct ticket_config *tk)
 	}
 
 	if (!valid) {
-		tk_log_warn("%s, but not valid anymore (will try to reacquire)",
-			    where_granted);
+		booth__ticket_warn(tk,
+				   "%s, but not valid anymore (will try to "
+				   "reacquire)", where_granted);
 	}
 
 	if (tk->is_granted && tk->leader != local) {
@@ -758,8 +765,10 @@ log_reacquire_reason(struct ticket_config *tk)
 				     "that's really too bad (will try to reacquire)",
 				     where_granted);
 		} else {
-			tk_log_warn("granted here, but we're "
-				    "not recorded as the grantee (will try to reacquire)");
+			booth__ticket_warn(tk,
+					   "granted here, but we're not "
+					   "recorded as the grantee (will try "
+					   "to reacquire)");
 		}
 	}
 }
@@ -782,9 +791,11 @@ update_ticket_state(const struct booth_config *conf, struct ticket_config *tk,
 		/* message from a live leader with valid ticket? */
 		if (sender == tk->leader && term_time_left(tk)) {
 			if (tk->is_granted) {
-				tk_log_warn("ticket was granted here, "
-					    "but it's live at %s (revoking here)",
-					    site_string(sender));
+				booth__ticket_warn(tk,
+						   "ticket was granted here, "
+						   "but it's live at %s "
+						   "(revoking here)",
+						   site_string(sender));
 			} else {
 				booth__ticket_info(tk, "ticket live at %s",
 						   site_string(sender));
@@ -1070,17 +1081,17 @@ static bool
 log_site_if_lost(const struct booth_site *site, void *user_data)
 {
     struct ticket_config *ticket = user_data;
-    struct ticket_config *tk = ticket;  // tk_log_warn() uses this alias
 
     if ((ticket->acks_received & site->bitmask) != 0) {
         // Site is not lost; continue checking the rest of the sites
         return true;
     }
 
-    tk_log_warn("%s %s didn't acknowledge our %s, will retry %d times",
-                ((site->type == ARBITRATOR)? "arbitrator" : "site"),
-                site_string(site), state_to_string(ticket->last_request),
-                ticket->retries);
+    booth__ticket_warn(ticket,
+                       "%s %s didn't acknowledge our %s, will retry %d times",
+                       ((site->type == ARBITRATOR)? "arbitrator" : "site"),
+                       site_string(site), state_to_string(ticket->last_request),
+                       ticket->retries);
     return true;
 }
 
@@ -1138,9 +1149,10 @@ handle_resends(struct booth_config *conf, struct ticket_config *tk)
 
 	/* try to reach some sites again if we just stepped down */
 	if (tk->last_request == OP_VOTE_FOR) {
-		tk_log_warn("no answers to our VtFr request to step down (try #%d), "
-			    "we are alone",
-			    tk->retry_number);
+		booth__ticket_warn(tk,
+				   "no answers to our VtFr request to step "
+				   "down (try #%d), we are alone",
+				   tk->retry_number);
 		goto just_resend;
 	}
 
@@ -1148,13 +1160,15 @@ handle_resends(struct booth_config *conf, struct ticket_config *tk)
 		ack_cnt = count_bits(tk->acks_received) - 1;
 
 		if (!ack_cnt) {
-			tk_log_warn("no answers to our request (try #%d), "
-				    "we are alone",
-				    tk->retry_number);
+			booth__ticket_warn(tk,
+					   "no answers to our request "
+					   "(try #%d), we are alone",
+					   tk->retry_number);
 		} else {
-			tk_log_warn("not enough answers to our request (try #%d): "
-				    "only got %d answers",
-				    tk->retry_number, ack_cnt);
+			booth__ticket_warn(tk,
+					   "not enough answers to our request "
+					   "(try #%d): only got %d answers",
+					   tk->retry_number, ack_cnt);
 		}
 
 	} else if (tk->retry_number == 1) {
@@ -1225,13 +1239,14 @@ ticket_lost(const struct booth_config *conf, struct ticket_config *tk)
 	int reason = OR_TKT_LOST;
 
 	if (tk->leader != local) {
-		tk_log_warn("lost at %s", site_string(tk->leader));
+		booth__ticket_warn(tk, "lost at %s", site_string(tk->leader));
 	} else {
 		if (is_ext_prog_running(tk)) {
 			ext_prog_timeout(tk);
 			reason = OR_LOCAL_FAIL;
 		} else {
-			tk_log_warn("lost majority (revoking locally)");
+			booth__ticket_warn(tk,
+					   "lost majority (revoking locally)");
 			reason = tk->election_reason ? tk->election_reason : OR_REACQUIRE;
 		}
 	}

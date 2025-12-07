@@ -97,17 +97,17 @@ process_REVOKE_for_manual_ticket(struct booth_config *conf,
 	mark_ticket_as_revoked(tk, sender);
 
 	if (tk->state == ST_LEADER) {
-		tk_log_warn("%s wants to revoke ticket, "
-			"but this site is itself a leader",
-			site_string(sender));
+		booth__ticket_warn(tk,
+				   "%s wants to revoke ticket, but this site "
+				   "is itself a leader", site_string(sender));
 
 		// Because another leader is presumably stepping down,
 		// let's notify other sites that now we are the only leader.
 		ticket_broadcast(conf, tk, OP_HEARTBEAT, OP_ACK, RLT_SUCCESS, 0);
 	} else {
-		tk_log_warn("%s wants to revoke ticket, "
-			"but this site is not following it",
-			site_string(sender));
+		booth__ticket_warn(tk,
+				   "%s wants to revoke ticket, but this site "
+				   "is not following it", site_string(sender));
 	}
 
 	return rv;

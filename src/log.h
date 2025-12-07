@@ -64,8 +64,9 @@
 #define booth__ticket_info(ticket, fmt, args...)    \
     booth__log_ticket(ticket, LOG_INFO, fmt, ##args)
 
-#define tk_log_warn(fmt, args...) booth__log_ticket(tk, LOG_WARNING, fmt,   \
-                                                    ##args)
+#define booth__ticket_warn(ticket, fmt, args...)    \
+    booth__log_ticket(ticket, LOG_WARNING, fmt, ##args)
+
 #define tk_log_error(fmt, args...) booth__log_ticket(tk, LOG_ERR, fmt, ##args)
 
 #endif /* _LOG_H */
