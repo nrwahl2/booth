@@ -100,12 +100,6 @@ static const struct booth_site _no_leader = {
 };
 struct booth_site *const no_leader = (struct booth_site*) &_no_leader;
 
-typedef enum
-{
-	BOOTHD_STARTED=0,
-	BOOTHD_STARTING
-} BOOTH_DAEMON_STATE;
-
 int poll_timeout;
 
 struct command_line cl;
@@ -117,18 +111,6 @@ static bool sig_exit_handler_called = false;
 static int sig_exit_handler_sig = 0;
 static bool sig_usr1_handler_called = false;
 static bool sig_chld_handler_called = false;
-
-static const char *
-state_string(BOOTH_DAEMON_STATE st)
-{
-	if (st == BOOTHD_STARTED) {
-		return "started";
-	} else if (st == BOOTHD_STARTING) {
-		return "starting";
-	} else {
-		return "invalid";
-	}
-}
 
 static void
 client_alloc(void)
@@ -429,15 +411,16 @@ setup_transport(const struct booth_config *conf)
 }
 
 static int
-write_daemon_state(const struct booth_config *conf, int fd, int state)
+write_daemon_state(const struct booth_config *conf, int fd, bool started)
 {
 	char *buffer;
 	int rv, size;
+	const char *state_s = (started? "started" : "starting");
 
 	rv = asprintf(&buffer, "booth_pid=%d booth_state=%s booth_type=%s "
 			       "booth_cfg_name='%s' booth_id=%d "
 			       "booth_addr_string='%s' booth_port=%d\n",
-		      getpid(), state_string(state), type_to_string(local->type),
+		      getpid(), state_s, type_to_string(local->type),
 		      conf->name, get_local_id(), site_string(local), site_port(local));
 
 	if (rv < 0) {
@@ -508,10 +491,10 @@ loop(struct booth_config *conf, int fd)
 
 	booth__foreach_ticket(conf, booth__setup_ticket, conf);
 
-	rv = write_daemon_state(conf, fd, BOOTHD_STARTED);
+	rv = write_daemon_state(conf, fd, true);
 	if (rv != 0) {
-		log_error("write daemon state %d to lockfile error %s: %s",
-                      BOOTHD_STARTED, cl.lockfile, strerror(errno));
+		log_error("Failed to write started state to lockfile %s: %s",
+			  cl.lockfile, strerror(errno));
 		goto fail;
 	}
 
@@ -923,10 +906,10 @@ create_lockfile(const struct booth_config *conf)
 		goto fail;
 	}
 
-	rv = write_daemon_state(conf, fd, BOOTHD_STARTING);
+	rv = write_daemon_state(conf, fd, false);
 	if (rv != 0) {
-		log_error("write daemon state %d to lockfile error %s: %s",
-				BOOTHD_STARTING, cl.lockfile, strerror(errno));
+		log_error("Failed to write starting state to lockfile %s: %s",
+			  cl.lockfile, strerror(errno));
 		goto fail;
 	}
 
