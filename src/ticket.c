@@ -1056,29 +1056,45 @@ log_site_if_lost(const struct booth_site *site, void *user_data)
     return true;
 }
 
+struct resend_if_needed_data {
+    struct booth_config *conf;
+    struct ticket_config *ticket;
+};
+
+static bool
+resend_if_needed(struct booth_site *site, void *user_data)
+{
+    struct resend_if_needed_data *data = user_data;
+    struct ticket_config *tk = data->ticket; // tk_log_debug() uses this alias
+
+    if ((data->ticket->acks_received & site->bitmask) != 0) {
+        // Already received, so resend is not necessary
+        return true;
+    }
+
+    site->resend_cnt++;
+    tk_log_debug("resending %s to %s",
+                 state_to_string(data->ticket->last_request),
+                 site_string(site));
+    send_msg(data->conf, data->ticket->last_request, data->ticket, site, NULL);
+    return true;
+}
+
 static void
 resend_msg(struct booth_config *conf, struct ticket_config *tk)
 {
-	struct booth_site *n;
-	int i;
+    struct resend_if_needed_data data = {
+        .conf = conf,
+        .ticket = tk,
+    };
 
-	if (!(tk->acks_received ^ local->bitmask)) {
-		ticket_broadcast(conf, tk, tk->last_request, 0, RLT_SUCCESS, 0);
-	} else {
-		FOREACH_NODE(conf, i, n) {
-			if (tk->acks_received & n->bitmask) {
-				continue;
-			}
+    if ((tk->acks_received ^ local->bitmask) == 0) {
+        ticket_broadcast(conf, tk, tk->last_request, 0, RLT_SUCCESS, 0);
+        return;
+    }
 
-			n->resend_cnt++;
-			tk_log_debug("resending %s to %s",
-				     state_to_string(tk->last_request),
-				     site_string(n));
-			send_msg(conf, tk->last_request, tk, n, NULL);
-		}
-
-		ticket_activate_timeout(tk);
-	}
+    booth__foreach_site(conf, resend_if_needed, &data);
+    ticket_activate_timeout(tk);
 }
 
 static void
