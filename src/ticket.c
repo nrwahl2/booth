@@ -957,17 +957,17 @@ notify_client(struct booth_config *conf, struct ticket_config *tk,
               int client_fd, struct boothc_ticket_msg *msg)
 {
 	struct boothc_ticket_msg omsg;
-	void (*deadfn) (int ci);
-	int rv, rc, ci;
+	int rv = 0;
+	int rc = 0;
 	int cmd, options;
-	struct client *req_client;
+	struct client *client = NULL;
 
 	cmd = ntohl(msg->header.cmd);
 	options = ntohl(msg->header.options);
 	rv = tk->outcome;
-	ci = find_client_by_fd(client_fd);
 
-	if (ci < 0) {
+	client = booth__find_client(client_fd);
+	if (client == NULL) {
 		booth__ticket_info(tk,
 				   "client %d (request %s) left before being "
 				   "notified",
@@ -999,11 +999,8 @@ notify_client(struct booth_config *conf, struct ticket_config *tk,
 					    client_fd, state_to_string(cmd));
 		}
 
-		req_client = clients + ci;
-		deadfn = req_client->deadfn;
-
-		if (deadfn) {
-			deadfn(ci);
+		if (client->deadfn != NULL) {
+			client->deadfn(client->index);
 		}
 
 		return 0; /* we're done with this request */

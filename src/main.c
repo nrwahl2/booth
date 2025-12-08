@@ -196,19 +196,19 @@ client_add(int fd, const struct booth_transport *tpt, workfn_t workfn,
 	assert(!"no client");
 }
 
-int
-find_client_by_fd(int fd)
+struct client *
+booth__find_client(int fd)
 {
-	int i;
+    if (fd < 0) {
+        return NULL;
+    }
 
-	if (fd < 0)
-		return -1;
-
-	for (i = 0; i <= client_maxi; i++) {
-		if (clients[i].fd == fd)
-			return i;
-	}
-	return -1;
+    for (int i = 0; i <= client_maxi; i++) {
+        if (clients[i].fd == fd) {
+            return &clients[i];
+        }
+    }
+    return NULL;
 }
 
 static bool
