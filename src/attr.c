@@ -178,7 +178,7 @@ do_attr_command(struct booth_config *conf, cmd_request_t cmd)
 		goto out_close;
 	}
 
-	tpt = booth_transport + TCP;
+	tpt = &booth_transport[TCP];
 
 	init_header(conf, &cl.attr_msg.header, cmd, 0, cl.options, 0, 0,
 		sizeof(cl.attr_msg));

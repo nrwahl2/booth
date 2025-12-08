@@ -696,7 +696,7 @@ query_get_string_answer(struct booth_config *conf, cmd_request_t cmd)
 		goto out;
 	}
 
-	tpt = booth_transport + TCP;
+	tpt = &booth_transport[TCP];
 	rv = tpt->open(site);
 	if (rv < 0)
 		goto out_close;
@@ -759,7 +759,7 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 	site = NULL;
 
 	/* Always use TCP for client - at least for now. */
-	tpt = booth_transport + TCP;
+	tpt = &booth_transport[TCP];
 
 	if (!*cl.site)
 		site = local;

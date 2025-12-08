@@ -667,7 +667,7 @@ tcp_init(void *unused __attribute__((unused)))
 		return rv;
 	}
 
-	booth__add_client(rv, booth_transport + TCP, process_tcp_listener);
+	booth__add_client(rv, &booth_transport[TCP], process_tcp_listener);
 	return 0;
 }
 
@@ -980,7 +980,7 @@ udp_init(void *f)
 	}
 
 	deliver_fn = f;
-	booth__add_client(local->udp_fd, booth_transport + UDP, process_recv);
+	booth__add_client(local->udp_fd, &booth_transport[UDP], process_recv);
 	return 0;
 }
 
