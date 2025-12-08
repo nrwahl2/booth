@@ -24,9 +24,8 @@
 #include "booth.h"
 
 typedef enum {
-	TCP = 1,
+	TCP,
 	UDP,
-	TRANSPORT_ENTRIES,
 } transport_layer_t;
 
 typedef enum {
@@ -54,7 +53,7 @@ struct booth_transport {
 	int (*close) (struct booth_site *);
 };
 
-extern const struct booth_transport booth_transport[TRANSPORT_ENTRIES];
+extern const struct booth_transport booth_transport[];
 
 /**
  * @internal

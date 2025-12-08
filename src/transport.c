@@ -1066,7 +1066,7 @@ return_0_booth_site(struct booth_site *v __attribute__((unused)))
 	return 0;
 }
 
-const struct booth_transport booth_transport[TRANSPORT_ENTRIES] = {
+const struct booth_transport booth_transport[] = {
 	[TCP] = {
 		.name = "TCP",
 		.init = booth_tcp_init,
