@@ -476,7 +476,6 @@ process_signals(struct booth_config *conf)
 static int
 loop(struct booth_config *conf, int fd)
 {
-	workfn_t workfn;
 	void (*deadfn) (int ci);
 	int rv, i;
 
@@ -507,14 +506,17 @@ loop(struct booth_config *conf, int fd)
 		}
 
 		for (i = 0; i <= client_maxi; i++) {
-			if (clients[i].fd < 0)
-				continue;
+			struct client *client = &clients[i];
 
-			if (pollfds[i].revents & POLLIN) {
-				workfn = clients[i].workfn;
-				if (workfn) {
-					workfn(conf, i);
-				}
+			if (client->fd < 0) {
+				// Uninitialized
+				continue;
+			}
+
+			if ((client->workfn != NULL)
+			    && ((pollfds[i].revents & POLLIN) != 0)) {
+
+				client->workfn(conf, client);
 			}
 			if (pollfds[i].revents &
 					(POLLERR | POLLHUP | POLLNVAL)) {

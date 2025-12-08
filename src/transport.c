@@ -493,28 +493,26 @@ read_client(struct client *req_cl)
 
 /* Only used for client requests (tcp) */
 static void
-process_connection(struct booth_config *conf, int ci)
+process_connection(struct booth_config *conf, struct client *client)
 {
-	struct client *req_cl;
-	void *msg = NULL;
 	struct boothc_header *header;
 	struct boothc_hdr_msg err_reply;
 	cmd_result_t errc;
+	int ci = client->index;
 	void (*deadfn) (int ci);
 
-	req_cl = clients + ci;
-	switch (read_client(req_cl)) {
+	switch (read_client(client)) {
 	case -1: /* error */
 		goto kill;
 	case 1: /* more to read */
 		return;
 	case 0:
 		/* we can process the request now */
-		msg = req_cl->msg;
+		break;
 	}
 
-	header = (struct boothc_header *) msg;
-	if (check_auth(conf, NULL, msg, ntohl(header->length))) {
+	header = (struct boothc_header *) client->msg;
+	if (check_auth(conf, NULL, client->msg, ntohl(header->length))) {
 		errc = RLT_AUTH;
 		goto send_err;
 	}
@@ -524,15 +522,15 @@ process_connection(struct booth_config *conf, int ci)
 	 */
 	switch (ntohl(header->cmd)) {
 	case CMD_LIST:
-		ticket_answer_list(conf, req_cl->fd);
+		ticket_answer_list(conf, client->fd);
 		goto kill;
 	case CMD_PEERS:
-		list_peers(conf, req_cl->fd);
+		list_peers(conf, client->fd);
 		goto kill;
 
 	case CMD_GRANT:
 	case CMD_REVOKE:
-		if (process_client_request(conf, req_cl, msg) == 1) {
+		if (process_client_request(conf, client, client->msg) == 1) {
 			goto kill; /* request processed definitely, close connection */
 		} else {
 			return;
@@ -542,14 +540,15 @@ process_connection(struct booth_config *conf, int ci)
 	case ATTR_GET:
 	case ATTR_SET:
 	case ATTR_DEL:
-		if (process_attr_request(conf, req_cl, msg) == 1) {
+		if (process_attr_request(conf, client, client->msg) == 1) {
 			goto kill; /* request processed definitely, close connection */
 		} else {
 			return;
 		}
 
 	default:
-		log_error("connection %d cmd %x unknown", ci, ntohl(header->cmd));
+		log_error("connection %d cmd %x unknown", client->index,
+			  ntohl(header->cmd));
 		errc = RLT_INVALID_ARG;
 		goto send_err;
 	}
@@ -559,17 +558,17 @@ process_connection(struct booth_config *conf, int ci)
 
 send_err:
 	init_header(conf, &err_reply.header, CL_RESULT, 0, 0, errc, 0, sizeof(err_reply));
-	send_client_msg(conf, req_cl->fd, &err_reply);
+	send_client_msg(conf, client->fd, &err_reply);
 
 kill:
-	deadfn = req_cl->deadfn;
+	deadfn = client->deadfn;
 	if (deadfn) {
 		deadfn(ci);
 	}
 }
 
 static void
-process_tcp_listener(struct booth_config *conf, int ci)
+process_tcp_listener(struct booth_config *conf, struct client *client)
 {
 	int fd = 0;
 	struct sockaddr addr = { 0, };
@@ -578,7 +577,7 @@ process_tcp_listener(struct booth_config *conf, int ci)
 	int one = 1;
 	int flags = 0;
 
-	fd = accept(clients[ci].fd, &addr, &addrlen);
+	fd = accept(client->fd, &addr, &addrlen);
 	if (fd < 0) {
 		log_error("process_tcp_listener: accept error %d %d", fd, errno);
 		return;
@@ -599,7 +598,19 @@ process_tcp_listener(struct booth_config *conf, int ci)
 		return;
 	}
 
-	booth__add_client(fd, clients[ci].transport, process_connection, NULL);
+	/* @TODO client may be an invalid pointer after this call. It points to
+	 * a location within the clients array, which may get realloc'd. This
+	 * doesn't seem broken currently, but it is precarious.
+	 *
+	 * We should probably do one of the following:
+	 * * Convert client to an array of (struct client *) instead of an array
+	 *   of (struct client).
+	 * * Store the TCP listener outside of the clients array, since it's
+	 *   really a server. Document that a client's member function should
+	 *   never change the location of the clients array or otherwise render
+	 *   a client pointer invalid -- but this is hard to enforce.
+	 */
+	booth__add_client(fd, client->transport, process_connection, NULL);
 
 	log_debug("Added client connection for fd=%d", fd);
 }
@@ -920,7 +931,7 @@ ex:
 
 /* Receive/process callback for UDP */
 static void
-process_recv(struct booth_config *conf, int ci)
+process_recv(struct booth_config *conf, struct client *client)
 {
 	struct sockaddr_storage sa;
 	int rv;
@@ -932,7 +943,7 @@ process_recv(struct booth_config *conf, int ci)
 
 	sa_len = sizeof(sa);
 	msg = (void*) buffer;
-	rv = recvfrom(clients[ci].fd, buffer, sizeof(buffer),
+	rv = recvfrom(client->fd, buffer, sizeof(buffer),
 		      MSG_NOSIGNAL | MSG_DONTWAIT, (struct sockaddr *) &sa,
 		      &sa_len);
 

@@ -78,9 +78,9 @@
 #define TICKET_LOST CHAR2CONST('L', 'O', 'S', 'T')
 
 struct booth_config;
+struct client;
 
-typedef void (*workfn_t)(struct booth_config *conf, int ci);
-
+typedef void (*workfn_t)(struct booth_config *, struct client *);
 
 typedef char boothc_site[BOOTH_NAME_LEN];
 typedef char boothc_ticket[BOOTH_NAME_LEN];
