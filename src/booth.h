@@ -345,7 +345,7 @@ struct client {
 
 void booth__add_client(int fd, const struct booth_transport *transport,
                        void (*fn)(struct booth_config *, struct client *));
-void booth__remove_client(int ci);
+void booth__remove_client(int index);
 struct client *booth__find_client(int fd);
 
 void safe_copy(char *dest, char *value, size_t buflen, const char *description);

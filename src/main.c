@@ -45,7 +45,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-#include <glib.h>           // g_slist_nth_data
+#include <glib.h>           // g_*, GArray
 #include <qb/qbdefs.h>      // QB_MAX
 
 #include <crm/services.h>
@@ -78,8 +78,6 @@
 
 #define RELEASE_STR 	VERSION
 
-#define CLIENT_NALLOC		32
-
 static bool daemonize = true;
 static bool enable_stderr = false;
 timetype start_time;
@@ -89,10 +87,9 @@ timetype start_time;
  * along with their callbacks.
  * Because these can be reallocated with every new fd, addressing
  * happens _only_ by their numeric index. */
-static struct client *clients = NULL;
-static struct pollfd *pollfds = NULL;
-static int client_maxi;
-static int client_size = 0;
+static GArray *clients = NULL;  // struct client *
+static GArray *pollfds = NULL;  // struct pollfd *
+int poll_timeout = 0;
 
 static const struct booth_site _no_leader = {
 	.addr_string = "none",
@@ -100,8 +97,6 @@ static const struct booth_site _no_leader = {
 	.index = -1,
 };
 struct booth_site *const no_leader = (struct booth_site*) &_no_leader;
-
-int poll_timeout;
 
 struct command_line cl;
 
@@ -114,91 +109,113 @@ static bool sig_usr1_handler_called = false;
 static bool sig_chld_handler_called = false;
 
 static void
-client_alloc(void)
+clear_client_msg(struct client *client)
 {
-	if (!(clients = realloc(
-		clients, (client_size + CLIENT_NALLOC) * sizeof(*clients))
-	) || !(pollfds = realloc(
-		pollfds, (client_size + CLIENT_NALLOC) * sizeof(*pollfds))
-	)) {
-		log_error("can't alloc for client array");
-		exit(1);
-	}
+    // Don't free client itself
+    if (client != NULL) {
+        g_clear_pointer(&client->msg, free);
+    }
+}
 
-	for (int i = client_size; i < client_size + CLIENT_NALLOC; i++) {
-		clients[i].index = i;
-		clients[i].fd = -1;
-		clients[i].fn = NULL;
-		pollfds[i].fd = -1;
-		pollfds[i].revents = 0;
-	}
-	client_size += CLIENT_NALLOC;
+static struct client *
+clients_index(guint index)
+{
+    if ((clients != NULL) && (index < clients->len)) {
+        return &(g_array_index(clients, struct client, index));
+    }
+    return NULL;
+}
+
+static struct pollfd *
+pollfds_index(guint index)
+{
+    if ((pollfds != NULL) && (index < pollfds->len)) {
+        return &(g_array_index(pollfds, struct pollfd, index));
+    }
+    return NULL;
 }
 
 void
 booth__add_client(int fd, const struct booth_transport *transport,
                   void (*fn)(struct booth_config *, struct client *))
 {
-    if (client_size - 1 <= client_maxi) {
-        client_alloc();
+    struct client client = {
+        .fd = fd,
+        .transport = transport,
+        .fn = fn,
+    };
+    struct pollfd pfd = {
+        .fd = fd,
+        .events = POLLIN,
+    };
+
+    assert(fd >= 0);
+
+    if (clients == NULL) {
+        clients = g_array_new(false, true, sizeof(struct client));
+        g_array_set_clear_func(clients, (GDestroyNotify) clear_client_msg);
+    }
+    if (pollfds == NULL) {
+        pollfds = g_array_new(false, true, sizeof(struct pollfd));
     }
 
-    for (int i = 0; i < client_size; i++) {
-        struct client *client = &clients[i];
+    // These two arrays must be kept in sync
+    assert(clients->len == pollfds->len);
 
-        if (client->fd != -1) {
-            // Client slot already in use
-            continue;
-        }
-
-        client->fd = fd;
-        client->transport = transport;
-        client->msg = NULL;
-        client->offset = 0;
-        client->fn = fn;
-
-        pollfds[i].fd = fd;
-        pollfds[i].events = POLLIN;
-
-        client_maxi = QB_MAX(client_maxi, i);
-        return;
-	}
-
-    assert(!("no client"));
+    /* client.index identifies the client's index within the client's array, as
+     * well as the corresponding pollfd's index within the pollfds array
+     */
+    client.index = clients->len;
+    g_array_append_val(clients, client);
+    g_array_append_val(pollfds, pfd);
 }
 
 void
-booth__remove_client(int ci)
+booth__remove_client(int index)
 {
-	struct client *c = clients + ci;
+    struct client *client = NULL;
+    bool was_last_element = false;
 
-	if (c->fd != -1) {
-		log_debug("removing client %d", c->fd);
-		close(c->fd);
-	}
+    assert((clients != NULL) && (pollfds != NULL)
+           && (clients->len == pollfds->len)
+           && (index >= 0) && (index < clients->len));
 
-	c->fd = -1;
-	c->fn = NULL;
+    client = clients_index(index);
+    was_last_element = (index == (clients->len - 1));
 
-	if (c->msg) {
-		free(c->msg);
-		c->msg = NULL;
-		c->offset = 0;
-	}
+    log_debug("Removing client fd=%d", client->fd);
+    close(client->fd);
 
-	pollfds[ci].fd = -1;
+    g_array_remove_index_fast(clients, index);
+    g_array_remove_index_fast(pollfds, index);
+
+    if (!was_last_element) {
+        /* g_array_remove_index_fast() copies the last array element's data to
+         * the removed element's position (if they are not the same element) and
+         * decrements the length. The other elements remain in place.
+         *
+         * Now that the last element has been moved to position index, its index
+         * member is no longer in sync with its position in the array. We must
+         * set it correctly, so that we can use it to get the client's
+         * corresponding struct pollfd in the pollfds array.
+         */
+        client = clients_index(index);
+        client->index = index;
+    }
 }
 
 struct client *
 booth__find_client(int fd)
 {
-    if (fd < 0) {
+    if ((fd < 0) || (clients == NULL)) {
         return NULL;
     }
 
-    for (int i = 0; i <= client_maxi; i++) {
-        if (clients[i].fd == fd) {
-            return &clients[i];
+    for (int i = 0; i < clients->len; i++) {
+        struct client *client = clients_index(i);
+
+        if (client->fd == fd) {
+            return client;
         }
     }
     return NULL;
@@ -474,7 +491,7 @@ process_signals(struct booth_config *conf)
 static int
 loop(struct booth_config *conf, int fd)
 {
-	int rv, i;
+	int rv = 0;
 
 	rv = setup_transport(conf);
 	if (rv < 0)
@@ -494,32 +511,48 @@ loop(struct booth_config *conf, int fd)
 			local->site_id, local->site_id);
 
 	while (1) {
-		rv = poll(pollfds, client_maxi + 1, poll_timeout);
-		if (rv == -1 && errno == EINTR)
-			continue;
-		if (rv < 0) {
-			log_error("poll failed: %s (%d)", strerror(errno), errno);
-			goto fail;
+		if (pollfds != NULL) {
+			rv = poll((struct pollfd *) pollfds->data,
+				  pollfds->len, poll_timeout);
+			if ((rv == -1) && (errno == EINTR)) {
+				continue;
+			}
+			if (rv < 0) {
+				log_error("Poll failed: %s", strerror(errno));
+				goto fail;
+			}
 		}
 
-		for (i = 0; i <= client_maxi; i++) {
-			struct client *client = &clients[i];
+		for (int i = 0; (clients != NULL) && (i <= clients->len); i++) {
+			struct client *client = clients_index(i);
+			struct pollfd *pollfd = pollfds_index(i);
 
-			if (client->fd < 0) {
-				// Uninitialized
+			if ((client == NULL) || (pollfd == NULL)) {
 				continue;
 			}
 
 			if ((client->fn != NULL)
-			    && ((pollfds[i].revents & POLLIN) != 0)) {
+			    && ((pollfd->revents & POLLIN) != 0)) {
 
 				client->fn(conf, client);
 			}
 
-			if ((pollfds[i].revents
+			client = clients_index(i);
+			pollfd = pollfds_index(i);
+
+			if ((client == NULL) || (pollfd == NULL)) {
+				continue;
+			}
+
+			if ((pollfd->revents
 			     & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
 
-				booth__remove_client(i);
+				/* Use the same i for the next loop iteration.
+				 * booth__remove_client() moved the last clients
+				 * element to position i (unless i was the last
+				 * index) and decremented clients->len.
+				 */
+				booth__remove_client(i--);
 			}
 		}
 
@@ -1659,6 +1692,14 @@ main(int argc, char *argv[], char *envp[])
 
 out:
     free_booth_config(conf);
+
+    if (clients != NULL) {
+        g_array_unref(clients);
+    }
+
+    if (pollfds != NULL) {
+        g_array_unref(pollfds);
+    }
 
 #if HAVE_LIBGNUTLS
 	gnutls_global_deinit();
