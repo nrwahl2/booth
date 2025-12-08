@@ -310,7 +310,6 @@ struct booth_config {
     /** Maximum time skew between peers allowed */
 	int maxtimeskew;
 
-    transport_layer_t proto;
     const struct booth_transport *transport;
     uint16_t port;
 

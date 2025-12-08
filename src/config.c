@@ -565,7 +565,6 @@ read_config(struct booth_config **conf, const char *path, int type)
 		return -ENOMEM;
 	}
 
-	(*conf)->proto = UDP;
 	(*conf)->transport = &booth_transport[UDP];
 	(*conf)->port = BOOTH_DEFAULT_PORT;
 	(*conf)->maxtimeskew = BOOTH_DEFAULT_MAX_TIME_SKEW;
