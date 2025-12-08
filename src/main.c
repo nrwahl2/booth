@@ -115,8 +115,6 @@ static bool sig_chld_handler_called = false;
 static void
 client_alloc(void)
 {
-	int i;
-
 	if (!(clients = realloc(
 		clients, (client_size + CLIENT_NALLOC) * sizeof(*clients))
 	) || !(pollfds = realloc(
@@ -126,10 +124,11 @@ client_alloc(void)
 		exit(1);
 	}
 
-	for (i = client_size; i < client_size + CLIENT_NALLOC; i++) {
+	for (int i = client_size; i < client_size + CLIENT_NALLOC; i++) {
+		clients[i].index = i;
+		clients[i].fd = -1;
 		clients[i].workfn = NULL;
 		clients[i].deadfn = NULL;
-		clients[i].fd = -1;
 		pollfds[i].fd = -1;
 		pollfds[i].revents = 0;
 	}

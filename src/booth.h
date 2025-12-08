@@ -338,6 +338,7 @@ extern struct booth_site *const no_leader;
 struct booth_transport;
 
 struct client {
+	guint index;
 	int fd;
 	const struct booth_transport *transport;
 	struct boothc_ticket_msg *msg;
