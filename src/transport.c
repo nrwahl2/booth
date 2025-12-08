@@ -654,7 +654,7 @@ setup_tcp_listener(int test_only)
 }
 
 static int
-booth_tcp_init(void *unused __attribute__((unused)))
+tcp_init(void *unused __attribute__((unused)))
 {
 	int rv;
 
@@ -732,7 +732,7 @@ done:
 }
 
 static int
-booth_tcp_open(struct booth_site *to)
+tcp_open(struct booth_site *to)
 {
 	int s, rv;
 
@@ -800,8 +800,7 @@ add_hmac(struct booth_config *conf, void *data, int len)
 }
 
 static int
-booth_tcp_send(struct booth_config *conf, struct booth_site *to, void *buf,
-               int len)
+tcp_send(struct booth_config *conf, struct booth_site *to, void *buf, int len)
 {
 	int rv;
 
@@ -821,7 +820,7 @@ tcp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
 }
 
 static int
-booth_tcp_recv(struct booth_site *from, void *buf, int len)
+tcp_recv(struct booth_site *from, void *buf, int len)
 {
 	/* Needs timeouts! */
 	int got = do_read(from->tcp_fd, buf, len);
@@ -834,15 +833,15 @@ booth_tcp_recv(struct booth_site *from, void *buf, int len)
 }
 
 static int
-booth_tcp_recv_auth(struct booth_config *conf, struct booth_site *from,
-                    void *buf, int len)
+tcp_recv_auth(struct booth_config *conf, struct booth_site *from, void *buf,
+              int len)
 {
 	int got, total;
 	int payload_len;
 	/* Needs timeouts! */
 
 	payload_len = len - sizeof(struct hmac);
-	got = booth_tcp_recv(from, buf, payload_len);
+	got = tcp_recv(from, buf, payload_len);
 	if (got < 0) {
 		return got;
 	}
@@ -850,8 +849,8 @@ booth_tcp_recv_auth(struct booth_config *conf, struct booth_site *from,
 	total = got;
 
 	if (is_auth_req(conf)) {
-		got = booth_tcp_recv(from, (unsigned char *) buf+payload_len,
-				     sizeof(struct hmac));
+		got = tcp_recv(from, (unsigned char *) buf + payload_len,
+			       sizeof(struct hmac));
 
 		if (got != sizeof(struct hmac) || check_auth(conf, from, buf, len)) {
 			return -1;
@@ -870,7 +869,7 @@ tcp_broadcast_auth(struct booth_config *conf, void *buf, int len)
 }
 
 static int
-booth_tcp_close(struct booth_site *to)
+tcp_close(struct booth_site *to)
 {
 	if (to) {
 		if (to->tcp_fd > STDERR_FILENO) {
@@ -971,7 +970,7 @@ process_recv(struct booth_config *conf, struct client *client)
 }
 
 static int
-booth_udp_init(void *f)
+udp_init(void *f)
 {
 	int rv;
 
@@ -986,8 +985,13 @@ booth_udp_init(void *f)
 }
 
 static int
-booth_udp_send(struct booth_config *conf, struct booth_site *to, void *buf,
-               int len)
+udp_open(struct booth_site *to __attribute__((unused)))
+{
+	return 0;
+}
+
+static int
+udp_send(struct booth_config *conf, struct booth_site *to, void *buf, int len)
 {
 	int rv;
 
@@ -1021,7 +1025,7 @@ udp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
 		return rv;
 	}
 
-	return booth_udp_send(conf, to, buf, len);
+	return udp_send(conf, to, buf, len);
 }
 
 static int
@@ -1054,7 +1058,7 @@ udp_broadcast_auth_one(struct booth_site *site, void *user_data)
         return true;
     }
 
-    rc = booth_udp_send(data->conf, site, data->buf, data->len);
+    rc = udp_send(data->conf, site, data->buf, data->len);
     if (data->rc == 0) {
         data->rc = rc;
     }
@@ -1063,7 +1067,7 @@ udp_broadcast_auth_one(struct booth_site *site, void *user_data)
 }
 
 static int
-booth_udp_broadcast_auth(struct booth_config *conf, void *buf, int len)
+udp_broadcast_auth(struct booth_config *conf, void *buf, int len)
 {
     int rc = 0;
     struct udp_broadcast_auth_one_data data = {
@@ -1087,7 +1091,7 @@ booth_udp_broadcast_auth(struct booth_config *conf, void *buf, int len)
 }
 
 static int
-return_0_booth_site(struct booth_site *v __attribute__((unused)))
+udp_close(struct booth_site *to __attribute__((unused)))
 {
 	return 0;
 }
@@ -1095,25 +1099,25 @@ return_0_booth_site(struct booth_site *v __attribute__((unused)))
 const struct booth_transport booth_transport[] = {
 	[TCP] = {
 		.name = "TCP",
-		.init = booth_tcp_init,
-		.open = booth_tcp_open,
-		.send = booth_tcp_send,
+		.init = tcp_init,
+		.open = tcp_open,
+		.send = tcp_send,
 		.send_auth = tcp_send_auth,
-		.recv = booth_tcp_recv,
-		.recv_auth = booth_tcp_recv_auth,
+		.recv = tcp_recv,
+		.recv_auth = tcp_recv_auth,
 		.broadcast_auth = tcp_broadcast_auth,
-		.close = booth_tcp_close,
+		.close = tcp_close,
 	},
 	[UDP] = {
 		.name = "UDP",
-		.init = booth_udp_init,
-		.open = return_0_booth_site,
-		.send = booth_udp_send,
+		.init = udp_init,
+		.open = udp_open,
+		.send = udp_send,
 		.send_auth = udp_send_auth,
 		.recv = udp_recv,
 		.recv_auth = udp_recv_auth,
-		.broadcast_auth = booth_udp_broadcast_auth,
-		.close = return_0_booth_site,
+		.broadcast_auth = udp_broadcast_auth,
+		.close = udp_close,
 	},
 };
 
