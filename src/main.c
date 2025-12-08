@@ -160,7 +160,8 @@ client_dead(int ci)
 
 void
 booth__add_client(int fd, const struct booth_transport *transport,
-                  workfn_t workfn, void (*deadfn)(int))
+                  void (*workfn)(struct booth_config *, struct client *),
+                  void (*deadfn)(int))
 {
     if (client_size - 1 <= client_maxi) {
         client_alloc();

@@ -78,9 +78,6 @@
 #define TICKET_LOST CHAR2CONST('L', 'O', 'S', 'T')
 
 struct booth_config;
-struct client;
-
-typedef void (*workfn_t)(struct booth_config *, struct client *);
 
 typedef char boothc_site[BOOTH_NAME_LEN];
 typedef char boothc_ticket[BOOTH_NAME_LEN];
@@ -343,14 +340,15 @@ struct client {
 	const struct booth_transport *transport;
 	struct boothc_ticket_msg *msg;
 	int offset; /* bytes read so far into msg */
-	workfn_t workfn;
+	void (*workfn)(struct booth_config *, struct client *);
 	void (*deadfn)(int);
 };
 
 extern struct client *clients;
 
 void booth__add_client(int fd, const struct booth_transport *transport,
-                       workfn_t workfn, void (*deadfn)(int));
+                       void (*workfn)(struct booth_config *, struct client *),
+                       void (*deadfn)(int));
 struct client *booth__find_client(int fd);
 void safe_copy(char *dest, char *value, size_t buflen, const char *description);
 
