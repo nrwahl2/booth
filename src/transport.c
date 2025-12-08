@@ -997,9 +997,9 @@ booth_udp_send(struct booth_config *conf, struct booth_site *to, void *buf,
 	return rv;
 }
 
-int
-booth_udp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
-                    int len)
+static int
+udp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
+              int len)
 {
 	int rv;
 
@@ -1081,7 +1081,7 @@ const struct booth_transport booth_transport[] = {
 		.init = booth_udp_init,
 		.open = return_0_booth_site,
 		.send = booth_udp_send,
-		.send_auth = booth_udp_send_auth,
+		.send_auth = udp_send_auth,
 		.close = return_0_booth_site,
 		.broadcast_auth = booth_udp_broadcast_auth,
 	},

@@ -1656,7 +1656,7 @@ send_reject(struct booth_config *conf, struct booth_site *dest,
 
 	booth__ticket_debug(tk, "sending reject to %s", site_string(dest));
 	init_ticket_msg(conf, &msg, OP_REJECTED, req, code, 0, tk);
-	return booth_udp_send_auth(conf, dest, &msg, sendmsglen(&msg));
+	return conf->transport->send_auth(conf, dest, &msg, sendmsglen(&msg));
 }
 
 int
@@ -1685,5 +1685,5 @@ send_msg(struct booth_config *conf, int cmd, struct ticket_config *tk,
 	}
 
 	init_ticket_msg(conf, &msg, cmd, req, RLT_SUCCESS, 0, valid_tk);
-	return booth_udp_send_auth(conf, dest, &msg, sendmsglen(&msg));
+	return conf->transport->send_auth(conf, dest, &msg, sendmsglen(&msg));
 }

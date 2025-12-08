@@ -46,7 +46,21 @@ struct booth_transport {
 	int (*init) (void *);
 	int (*open) (struct booth_site *);
 	int (*send) (struct booth_config *, struct booth_site *, void *, int);
-	int (*send_auth) (struct booth_config *, struct booth_site *, void *, int);
+
+	/**
+	 * @internal
+	 * Send data, with authentication added
+	 *
+	 * @param[in,out] conf  Booth configuration
+	 * @param[in]     to    Recipient
+	 * @param[in]     buf   Message
+	 * @param[in]     len   Length of \p buf
+	 *
+	 * @return See @add_hmac and @booth_udp_send
+	 */
+	int (*send_auth) (struct booth_config *, struct booth_site *, void *,
+			  int);
+
 	int (*recv) (struct booth_site *, void *, int);
 	int (*recv_auth) (struct booth_config *, struct booth_site *, void *, int);
 	int (*broadcast_auth) (struct booth_config *, void *, int);
@@ -71,20 +85,6 @@ int find_myself(struct booth_config *conf, struct booth_site **me,
 int check_boothc_header(struct boothc_header *data, int len_incl_data);
 
 int setup_tcp_listener(int test_only);
-
-/**
- * @internal
- * Send data, with authentication added
- *
- * @param[in,out] conf config object to refer to
- * @param[in]     to   site structure of the recipient
- * @param[in]     buf  message itself
- * @param[in]     len  length of #buf
- *
- * @return see @add_hmac and @booth_udp_send
- */
-int booth_udp_send_auth(struct booth_config *conf, struct booth_site *to,
-			void *buf, int len);
 
 /**
  * @internal
