@@ -341,15 +341,15 @@ struct client {
 	struct boothc_ticket_msg *msg;
 	int offset; /* bytes read so far into msg */
 	void (*workfn)(struct booth_config *, struct client *);
-	void (*deadfn)(int);
 };
 
 extern struct client *clients;
 
 void booth__add_client(int fd, const struct booth_transport *transport,
-                       void (*workfn)(struct booth_config *, struct client *),
-                       void (*deadfn)(int));
+                       void (*workfn)(struct booth_config *, struct client *));
+void booth__remove_client(int ci);
 struct client *booth__find_client(int fd);
+
 void safe_copy(char *dest, char *value, size_t buflen, const char *description);
 
 /**

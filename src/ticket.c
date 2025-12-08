@@ -999,10 +999,7 @@ notify_client(struct booth_config *conf, struct ticket_config *tk,
 					    client_fd, state_to_string(cmd));
 		}
 
-		if (client->deadfn != NULL) {
-			client->deadfn(client->index);
-		}
-
+		booth__remove_client(client->index);
 		return 0; /* we're done with this request */
 	}
 }

@@ -499,7 +499,6 @@ process_connection(struct booth_config *conf, struct client *client)
 	struct boothc_hdr_msg err_reply;
 	cmd_result_t errc;
 	int ci = client->index;
-	void (*deadfn) (int ci);
 
 	switch (read_client(client)) {
 	case -1: /* error */
@@ -561,10 +560,7 @@ send_err:
 	send_client_msg(conf, client->fd, &err_reply);
 
 kill:
-	deadfn = client->deadfn;
-	if (deadfn) {
-		deadfn(ci);
-	}
+	booth__remove_client(ci);
 }
 
 static void
@@ -610,7 +606,7 @@ process_tcp_listener(struct booth_config *conf, struct client *client)
 	 *   never change the location of the clients array or otherwise render
 	 *   a client pointer invalid -- but this is hard to enforce.
 	 */
-	booth__add_client(fd, client->transport, process_connection, NULL);
+	booth__add_client(fd, client->transport, process_connection);
 
 	log_debug("Added client connection for fd=%d", fd);
 }
@@ -671,8 +667,7 @@ booth_tcp_init(void *unused __attribute__((unused)))
 		return rv;
 	}
 
-	booth__add_client(rv, booth_transport + TCP, process_tcp_listener,
-			  NULL);
+	booth__add_client(rv, booth_transport + TCP, process_tcp_listener);
 	return 0;
 }
 
@@ -973,8 +968,7 @@ booth_udp_init(void *f)
 	}
 
 	deliver_fn = f;
-	booth__add_client(local->udp_fd, booth_transport + UDP, process_recv,
-			  NULL);
+	booth__add_client(local->udp_fd, booth_transport + UDP, process_recv);
 	return 0;
 }
 

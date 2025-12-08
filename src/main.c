@@ -129,39 +129,15 @@ client_alloc(void)
 		clients[i].index = i;
 		clients[i].fd = -1;
 		clients[i].workfn = NULL;
-		clients[i].deadfn = NULL;
 		pollfds[i].fd = -1;
 		pollfds[i].revents = 0;
 	}
 	client_size += CLIENT_NALLOC;
 }
 
-static void
-client_dead(int ci)
-{
-	struct client *c = clients + ci;
-
-	if (c->fd != -1) {
-		log_debug("removing client %d", c->fd);
-		close(c->fd);
-	}
-
-	c->fd = -1;
-	c->workfn = NULL;
-
-	if (c->msg) {
-		free(c->msg);
-		c->msg = NULL;
-		c->offset = 0;
-	}
-
-	pollfds[ci].fd = -1;
-}
-
 void
 booth__add_client(int fd, const struct booth_transport *transport,
-                  void (*workfn)(struct booth_config *, struct client *),
-                  void (*deadfn)(int))
+                  void (*workfn)(struct booth_config *, struct client *))
 {
     if (client_size - 1 <= client_maxi) {
         client_alloc();
@@ -180,7 +156,6 @@ booth__add_client(int fd, const struct booth_transport *transport,
         client->msg = NULL;
         client->offset = 0;
         client->workfn = workfn;
-        client->deadfn = (deadfn != NULL)? deadfn : client_dead;
 
         pollfds[i].fd = fd;
         pollfds[i].events = POLLIN;
@@ -190,6 +165,28 @@ booth__add_client(int fd, const struct booth_transport *transport,
 	}
 
     assert(!("no client"));
+}
+
+void
+booth__remove_client(int ci)
+{
+	struct client *c = clients + ci;
+
+	if (c->fd != -1) {
+		log_debug("removing client %d", c->fd);
+		close(c->fd);
+	}
+
+	c->fd = -1;
+	c->workfn = NULL;
+
+	if (c->msg) {
+		free(c->msg);
+		c->msg = NULL;
+		c->offset = 0;
+	}
+
+	pollfds[ci].fd = -1;
 }
 
 struct client *
@@ -477,7 +474,6 @@ process_signals(struct booth_config *conf)
 static int
 loop(struct booth_config *conf, int fd)
 {
-	void (*deadfn) (int ci);
 	int rv, i;
 
 	rv = setup_transport(conf);
@@ -519,11 +515,11 @@ loop(struct booth_config *conf, int fd)
 
 				client->workfn(conf, client);
 			}
-			if (pollfds[i].revents &
-					(POLLERR | POLLHUP | POLLNVAL)) {
-				deadfn = clients[i].deadfn;
-				if (deadfn)
-					deadfn(i);
+
+			if ((pollfds[i].revents
+			     & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+
+				booth__remove_client(i);
 			}
 		}
 
