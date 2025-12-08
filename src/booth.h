@@ -343,8 +343,6 @@ struct client {
 	void (*fn)(struct booth_config *, struct client *);
 };
 
-extern struct client *clients;
-
 void booth__add_client(int fd, const struct booth_transport *transport,
                        void (*fn)(struct booth_config *, struct client *));
 void booth__remove_client(int ci);

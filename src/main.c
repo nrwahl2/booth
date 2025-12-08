@@ -89,7 +89,7 @@ timetype start_time;
  * along with their callbacks.
  * Because these can be reallocated with every new fd, addressing
  * happens _only_ by their numeric index. */
-struct client *clients = NULL;
+static struct client *clients = NULL;
 static struct pollfd *pollfds = NULL;
 static int client_maxi;
 static int client_size = 0;
