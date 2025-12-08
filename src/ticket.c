@@ -1026,7 +1026,8 @@ ticket_broadcast(struct booth_config *conf, struct ticket_config *tk,
 	}
 
 	ticket_activate_timeout(tk);
-	return transport(conf)->broadcast_auth(conf, &msg, sendmsglen(&msg));
+	return booth__get_transport(conf)->broadcast_auth(conf, &msg,
+							  sendmsglen(&msg));
 }
 
 /* update the ticket on the leader, write it to the CIB, and
