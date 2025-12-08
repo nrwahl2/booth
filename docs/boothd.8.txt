@@ -206,11 +206,14 @@ The following key/value pairs are defined:
 	The UDP/TCP port to use. Default is '9929'.
 
 'transport'::
-	The transport protocol to use for Raft exchanges.
-	Currently only UDP is supported.
+	(Deprecated) The transport protocol to use for Raft exchanges. Currently
+	only UDP is supported.
 +
 Clients use TCP to communicate with a daemon; Booth 
 will always bind and listen to both UDP and TCP ports.
++
+This option is deprecated and will be removed in a future release. There are no
+plans to support any other transport layer.
 
 'authfile'::
 	File containing the authentication key. The key can be either

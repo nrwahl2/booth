@@ -683,6 +683,7 @@ no_value:
 			goto err;
 		}
 
+		// @COMPAT Deprecated since 1.3
 		if (strcmp(key, "transport") == 0) {
 			if (got_transport) {
 				error = "config file has multiple transport lines";
