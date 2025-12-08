@@ -814,6 +814,13 @@ booth_tcp_send(struct booth_config *conf, struct booth_site *to, void *buf,
 }
 
 static int
+tcp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
+              int len)
+{
+    assert(false);  // Unimplemented
+}
+
+static int
 booth_tcp_recv(struct booth_site *from, void *buf, int len)
 {
 	/* Needs timeouts! */
@@ -854,6 +861,12 @@ booth_tcp_recv_auth(struct booth_config *conf, struct booth_site *from,
 	}
 
 	return total;
+}
+
+static int
+tcp_broadcast_auth(struct booth_config *conf, void *buf, int len)
+{
+    assert(false);  // Unimplemented
 }
 
 static int
@@ -1011,6 +1024,19 @@ udp_send_auth(struct booth_config *conf, struct booth_site *to, void *buf,
 	return booth_udp_send(conf, to, buf, len);
 }
 
+static int
+udp_recv(struct booth_site *from, void *buf, int len)
+{
+    assert(false);  // Unimplemented
+}
+
+static int
+udp_recv_auth(struct booth_config *conf, struct booth_site *from, void *buf,
+              int len)
+{
+    assert(false);  // Unimplemented
+}
+
 struct udp_broadcast_auth_one_data {
     struct booth_config *conf;
     void *buf;
@@ -1072,8 +1098,10 @@ const struct booth_transport booth_transport[] = {
 		.init = booth_tcp_init,
 		.open = booth_tcp_open,
 		.send = booth_tcp_send,
+		.send_auth = tcp_send_auth,
 		.recv = booth_tcp_recv,
 		.recv_auth = booth_tcp_recv_auth,
+		.broadcast_auth = tcp_broadcast_auth,
 		.close = booth_tcp_close,
 	},
 	[UDP] = {
@@ -1082,8 +1110,10 @@ const struct booth_transport booth_transport[] = {
 		.open = return_0_booth_site,
 		.send = booth_udp_send,
 		.send_auth = udp_send_auth,
-		.close = return_0_booth_site,
+		.recv = udp_recv,
+		.recv_auth = udp_recv_auth,
 		.broadcast_auth = booth_udp_broadcast_auth,
+		.close = return_0_booth_site,
 	},
 };
 
