@@ -491,84 +491,78 @@ process_signals(struct booth_config *conf)
 static int
 loop(struct booth_config *conf, int fd)
 {
-	int rv = 0;
+    int rc = 0;
 
-	rv = setup_transport(conf);
-	if (rv < 0)
-		goto fail;
+    rc = setup_transport(conf);
+    if (rc < 0) {
+        return -1;
+    }
 
-	booth__foreach_ticket(conf, booth__setup_ticket, conf);
+    booth__foreach_ticket(conf, booth__setup_ticket, conf);
 
-	rv = write_daemon_state(conf, fd, true);
-	if (rv != 0) {
-		log_error("Failed to write started state to lockfile %s: %s",
-			  cl.lockfile, strerror(errno));
-		goto fail;
-	}
+    rc = write_daemon_state(conf, fd, true);
+    if (rc != 0) {
+        log_error("Failed to write started state to lockfile %s: %s",
+                  cl.lockfile, strerror(errno));
+        return -1;
+    }
 
-	log_info("BOOTH %s daemon started, node id is 0x%08X (%d).",
-		type_to_string(local->type),
-			local->site_id, local->site_id);
+    log_info("Booth %s daemon started. Node id is 0x%08X (%d).",
+             type_to_string(local->type), local->site_id, local->site_id);
 
-	while (1) {
-		if (pollfds != NULL) {
-			rv = poll((struct pollfd *) pollfds->data,
-				  pollfds->len, poll_timeout);
-			if ((rv == -1) && (errno == EINTR)) {
-				continue;
-			}
-			if (rv < 0) {
-				log_error("Poll failed: %s", strerror(errno));
-				goto fail;
-			}
-		}
+    while (true) {
+        if (pollfds != NULL) {
+            rc = poll((struct pollfd *) pollfds->data, pollfds->len,
+                      poll_timeout);
 
-		for (int i = 0; (clients != NULL) && (i <= clients->len); i++) {
-			struct client *client = clients_index(i);
-			struct pollfd *pollfd = pollfds_index(i);
+            if ((rc == -1) && (errno == EINTR)) {
+                continue;
+            }
 
-			if ((client == NULL) || (pollfd == NULL)) {
-				continue;
-			}
+            if (rc < 0) {
+                log_error("Poll failed: %s", strerror(errno));
+                return -1;
+            }
+        }
 
-			if ((client->fn != NULL)
-			    && ((pollfd->revents & POLLIN) != 0)) {
+        for (int i = 0; (clients != NULL) && (i <= clients->len); i++) {
+            struct client *client = clients_index(i);
+            struct pollfd *pollfd = pollfds_index(i);
 
-				client->fn(conf, client);
-			}
+            if ((client == NULL) || (pollfd == NULL)) {
+                continue;
+            }
 
-			client = clients_index(i);
-			pollfd = pollfds_index(i);
+            if ((client->fn != NULL) && ((pollfd->revents & POLLIN) != 0)) {
+                client->fn(conf, client);
+            }
 
-			if ((client == NULL) || (pollfd == NULL)) {
-				continue;
-			}
+            client = clients_index(i);
+            pollfd = pollfds_index(i);
 
-			if ((pollfd->revents
-			     & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+            if ((client == NULL) || (pollfd == NULL)) {
+                continue;
+            }
 
-				/* Use the same i for the next loop iteration.
-				 * booth__remove_client() moved the last clients
-				 * element to position i (unless i was the last
-				 * index) and decremented clients->len.
-				 */
-				booth__remove_client(i--);
-			}
-		}
+            if ((pollfd->revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+                /* Use the same i for the next loop iteration.
+                 * booth__remove_client() moved the last clients element to
+                 * position i (unless i was the last index) and decremented
+                 * clients->len.
+                 */
+                booth__remove_client(i--);
+            }
+        }
 
-		booth__foreach_ticket(conf, booth__process_ticket, conf);
+        booth__foreach_ticket(conf, booth__process_ticket, conf);
 
-		if (process_signals(conf) != 0) {
-			return 0;
-		}
-	}
+        if (process_signals(conf) != 0) {
+            return 0;
+        }
+    }
 
 	return 0;
-
-fail:
-	return -1;
 }
-
 
 static int
 test_reply(cmd_result_t reply_code, cmd_request_t cmd)
