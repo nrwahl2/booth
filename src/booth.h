@@ -349,8 +349,8 @@ struct client {
 
 extern struct client *clients;
 
-int client_add(int fd, const struct booth_transport *tpt,
-		workfn_t workfn, void (*deadfn)(int ci));
+void booth__add_client(int fd, const struct booth_transport *transport,
+                       workfn_t workfn, void (*deadfn)(int));
 struct client *booth__find_client(int fd);
 void safe_copy(char *dest, char *value, size_t buflen, const char *description);
 

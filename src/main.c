@@ -45,7 +45,8 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-#include <glib.h>			// g_slist_nth_data
+#include <glib.h>           // g_slist_nth_data
+#include <qb/qbdefs.h>      // QB_MAX
 
 #include <crm/services.h>
 
@@ -157,43 +158,37 @@ client_dead(int ci)
 	pollfds[ci].fd = -1;
 }
 
-int
-client_add(int fd, const struct booth_transport *tpt, workfn_t workfn,
-           void (*deadfn)(int ci))
+void
+booth__add_client(int fd, const struct booth_transport *transport,
+                  workfn_t workfn, void (*deadfn)(int))
 {
-	int i;
-	struct client *c;
+    if (client_size - 1 <= client_maxi) {
+        client_alloc();
+    }
 
+    for (int i = 0; i < client_size; i++) {
+        struct client *client = &clients[i];
 
-	if (client_size - 1 <= client_maxi ) {
-		client_alloc();
+        if (client->fd != -1) {
+            // Client slot already in use
+            continue;
+        }
+
+        client->fd = fd;
+        client->transport = transport;
+        client->msg = NULL;
+        client->offset = 0;
+        client->workfn = workfn;
+        client->deadfn = (deadfn != NULL)? deadfn : client_dead;
+
+        pollfds[i].fd = fd;
+        pollfds[i].events = POLLIN;
+
+        client_maxi = QB_MAX(client_maxi, i);
+        return;
 	}
 
-	for (i = 0; i < client_size; i++) {
-		c = clients + i;
-		if (c->fd != -1)
-			continue;
-
-		c->workfn = workfn;
-		if (deadfn)
-			c->deadfn = deadfn;
-		else
-			c->deadfn = client_dead;
-
-		c->transport = tpt;
-		c->fd = fd;
-		c->msg = NULL;
-		c->offset = 0;
-
-		pollfds[i].fd = fd;
-		pollfds[i].events = POLLIN;
-		if (i > client_maxi)
-			client_maxi = i;
-
-		return i;
-	}
-
-	assert(!"no client");
+    assert(!("no client"));
 }
 
 struct client *

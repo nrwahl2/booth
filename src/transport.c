@@ -571,10 +571,12 @@ kill:
 static void
 process_tcp_listener(struct booth_config *conf, int ci)
 {
-	int rc;
-	int fd, i, flags, one = 1;
+	int fd = 0;
+	struct sockaddr addr = { 0, };
 	socklen_t addrlen = sizeof(struct sockaddr);
-	struct sockaddr addr;
+	int rc = 0;
+	int one = 1;
+	int flags = 0;
 
 	fd = accept(clients[ci].fd, &addr, &addrlen);
 	if (fd < 0) {
@@ -597,9 +599,9 @@ process_tcp_listener(struct booth_config *conf, int ci)
 		return;
 	}
 
-	i = client_add(fd, clients[ci].transport, process_connection, NULL);
+	booth__add_client(fd, clients[ci].transport, process_connection, NULL);
 
-	log_debug("client connection %d fd %d", i, fd);
+	log_debug("Added client connection for fd=%d", fd);
 }
 
 int
@@ -658,7 +660,8 @@ booth_tcp_init(void *unused __attribute__((unused)))
 		return rv;
 	}
 
-	client_add(rv, booth_transport + TCP, process_tcp_listener, NULL);
+	booth__add_client(rv, booth_transport + TCP, process_tcp_listener,
+			  NULL);
 	return 0;
 }
 
@@ -959,7 +962,8 @@ booth_udp_init(void *f)
 	}
 
 	deliver_fn = f;
-	client_add(local->udp_fd, booth_transport + UDP, process_recv, NULL);
+	booth__add_client(local->udp_fd, booth_transport + UDP, process_recv,
+			  NULL);
 	return 0;
 }
 
