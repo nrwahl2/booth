@@ -311,6 +311,7 @@ struct booth_config {
 	int maxtimeskew;
 
     transport_layer_t proto;
+    const struct booth_transport *transport;
     uint16_t port;
 
     /** Stores the OR of sites bitmasks. */

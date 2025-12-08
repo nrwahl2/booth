@@ -567,6 +567,7 @@ read_config(struct booth_config **conf, const char *path, int type)
 	}
 
 	(*conf)->proto = UDP;
+	(*conf)->transport = &booth_transport[UDP];
 	(*conf)->port = BOOTH_DEFAULT_PORT;
 	(*conf)->maxtimeskew = BOOTH_DEFAULT_MAX_TIME_SKEW;
 	(*conf)->authkey[0] = '\0';
@@ -690,6 +691,8 @@ no_value:
 
 			if (strcasecmp(val, "UDP") == 0) {
 				(*conf)->proto = UDP;
+				(*conf)->transport = &booth_transport[UDP];
+
 			} else {
 				(void)snprintf(error_str_buf, sizeof(error_str_buf),
 				    "invalid transport protocol \"%s\"", val);

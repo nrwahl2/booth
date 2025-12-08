@@ -155,12 +155,6 @@ init_ticket_msg(const struct booth_config *conf, struct boothc_ticket_msg *msg,
 	}
 }
 
-static inline const struct booth_transport *
-booth__get_transport(const struct booth_config *conf)
-{
-	return booth_transport + conf->proto;
-}
-
 static inline const char *
 site_string(const struct booth_site *site)
 {

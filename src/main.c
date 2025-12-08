@@ -405,10 +405,10 @@ setup_transport(const struct booth_config *conf)
 {
 	int rv;
 
-	rv = booth__get_transport(conf)->init(message_recv);
+	rv = conf->transport->init(message_recv);
 	if (rv < 0) {
-		log_error("failed to init booth_transport %s",
-			  booth__get_transport(conf)->name);
+		log_error("Failed to init booth_transport %s",
+			  conf->transport->name);
 		return rv;
 	}
 
