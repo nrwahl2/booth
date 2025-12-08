@@ -544,7 +544,6 @@ read_config(struct booth_config **conf, const char *path, int type)
 	char *cp, *cp2;
 	int i;
 	int lineno = 0;
-	int got_transport = 0;
 	int min_timeout = 0;
 	struct ticket_config defaults = { { 0 } };
 	struct ticket_config *current_tk = NULL;
@@ -685,23 +684,14 @@ no_value:
 
 		// @COMPAT Deprecated since 1.3
 		if (strcmp(key, "transport") == 0) {
-			if (got_transport) {
-				error = "config file has multiple transport lines";
-				goto err;
-			}
-
 			if (strcasecmp(val, "UDP") == 0) {
-				(*conf)->proto = UDP;
-				(*conf)->transport = &booth_transport[UDP];
-
-			} else {
-				(void)snprintf(error_str_buf, sizeof(error_str_buf),
-				    "invalid transport protocol \"%s\"", val);
-				error = error_str_buf;
-				goto err;
+				continue;
 			}
-			got_transport = 1;
-			continue;
+
+			snprintf(error_str_buf, sizeof(error_str_buf),
+				 "Invalid transport protocol \"%s\"", val);
+			error = error_str_buf;
+			goto err;
 		}
 
 		if (strcmp(key, "port") == 0) {
