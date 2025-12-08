@@ -340,13 +340,13 @@ struct client {
 	const struct booth_transport *transport;
 	struct boothc_ticket_msg *msg;
 	int offset; /* bytes read so far into msg */
-	void (*workfn)(struct booth_config *, struct client *);
+	void (*fn)(struct booth_config *, struct client *);
 };
 
 extern struct client *clients;
 
 void booth__add_client(int fd, const struct booth_transport *transport,
-                       void (*workfn)(struct booth_config *, struct client *));
+                       void (*fn)(struct booth_config *, struct client *));
 void booth__remove_client(int ci);
 struct client *booth__find_client(int fd);
 

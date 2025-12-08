@@ -128,7 +128,7 @@ client_alloc(void)
 	for (int i = client_size; i < client_size + CLIENT_NALLOC; i++) {
 		clients[i].index = i;
 		clients[i].fd = -1;
-		clients[i].workfn = NULL;
+		clients[i].fn = NULL;
 		pollfds[i].fd = -1;
 		pollfds[i].revents = 0;
 	}
@@ -137,7 +137,7 @@ client_alloc(void)
 
 void
 booth__add_client(int fd, const struct booth_transport *transport,
-                  void (*workfn)(struct booth_config *, struct client *))
+                  void (*fn)(struct booth_config *, struct client *))
 {
     if (client_size - 1 <= client_maxi) {
         client_alloc();
@@ -155,7 +155,7 @@ booth__add_client(int fd, const struct booth_transport *transport,
         client->transport = transport;
         client->msg = NULL;
         client->offset = 0;
-        client->workfn = workfn;
+        client->fn = fn;
 
         pollfds[i].fd = fd;
         pollfds[i].events = POLLIN;
@@ -178,7 +178,7 @@ booth__remove_client(int ci)
 	}
 
 	c->fd = -1;
-	c->workfn = NULL;
+	c->fn = NULL;
 
 	if (c->msg) {
 		free(c->msg);
@@ -510,10 +510,10 @@ loop(struct booth_config *conf, int fd)
 				continue;
 			}
 
-			if ((client->workfn != NULL)
+			if ((client->fn != NULL)
 			    && ((pollfds[i].revents & POLLIN) != 0)) {
 
-				client->workfn(conf, client);
+				client->fn(conf, client);
 			}
 
 			if ((pollfds[i].revents
