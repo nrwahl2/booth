@@ -39,8 +39,7 @@
 #include "ticket.h"
 #include "log.h"
 
-// @TODO Make these no longer file-scope
-static struct ticket_config defaults = { { 0 } };
+// @TODO Make this no longer file-scope
 static int min_timeout = 0;
 
 void
@@ -616,6 +615,20 @@ static bool
 parse_ticket(struct booth_config *conf, char *value, action_t action,
              struct ticket_config **ticket, gchar **error)
 {
+    static struct ticket_config defaults = {
+        .clu_test = {
+            .path = NULL,
+            .pid = 0,
+            .status = 0,
+            .progstate = EXTPROG_IDLE,
+        },
+        .term_duration = DEFAULT_TICKET_EXPIRY,
+        .timeout = DEFAULT_TICKET_TIMEOUT,
+        .retries = DEFAULT_RETRIES,
+        .acquire_after = 0,
+        .mode = TICKET_MODE_AUTO,
+    };
+
     if ((*ticket != NULL)
         && (strcmp((*ticket)->name, "__defaults__") != 0)
         && !postproc_ticket(*ticket)) {
@@ -790,16 +803,6 @@ booth__read_config(struct booth_config **conf, const char *path,
     strcpy((*conf)->site_group, "haclient");
     strcpy((*conf)->arb_user,   "nobody");
     strcpy((*conf)->arb_group,  "nobody");
-
-    defaults.clu_test.path  = NULL;
-    defaults.clu_test.pid  = 0;
-    defaults.clu_test.status  = 0;
-    defaults.clu_test.progstate  = EXTPROG_IDLE;
-    defaults.term_duration        = DEFAULT_TICKET_EXPIRY;
-    defaults.timeout       = DEFAULT_TICKET_TIMEOUT;
-    defaults.retries       = DEFAULT_RETRIES;
-    defaults.acquire_after = 0;
-    defaults.mode          = TICKET_MODE_AUTO;
 
     log_debug("reading config file %s", path);
     while (fgets(line, sizeof(line), fp)) {
