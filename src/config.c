@@ -601,8 +601,7 @@ static bool
 parse_site_user(struct booth_config *conf, char *value, action_t action,
                 struct ticket_config **ticket, gchar **error)
 {
-    // @FIXME optarg is not defined and we're processing a file, not CLI options
-    safe_copy(conf->site_user, optarg, BOOTH_NAME_LEN, "site-user");
+    safe_copy(conf->site_user, value, BOOTH_NAME_LEN, "site-user");
     return true;
 }
 
@@ -610,8 +609,7 @@ static bool
 parse_site_group(struct booth_config *conf, char *value, action_t action,
                  struct ticket_config **ticket, gchar **error)
 {
-    // @FIXME optarg is not defined and we're processing a file, not CLI options
-    safe_copy(conf->site_group, optarg, BOOTH_NAME_LEN, "site-group");
+    safe_copy(conf->site_group, value, BOOTH_NAME_LEN, "site-group");
     return true;
 }
 
@@ -619,8 +617,7 @@ static bool
 parse_arbitrator_user(struct booth_config *conf, char *value, action_t action,
                       struct ticket_config **ticket, gchar **error)
 {
-    // @FIXME optarg is not defined and we're processing a file, not CLI options
-    safe_copy(conf->arb_user, optarg, BOOTH_NAME_LEN, "arbitrator-user");
+    safe_copy(conf->arb_user, value, BOOTH_NAME_LEN, "arbitrator-user");
     return true;
 }
 
@@ -628,8 +625,7 @@ static bool
 parse_arbitrator_group(struct booth_config *conf, char *value, action_t action,
                        struct ticket_config **ticket, gchar **error)
 {
-    // @FIXME optarg is not defined and we're processing a file, not CLI options
-    safe_copy(conf->arb_group, optarg, BOOTH_NAME_LEN, "arbitrator-group");
+    safe_copy(conf->arb_group, value, BOOTH_NAME_LEN, "arbitrator-group");
     return true;
 }
 
