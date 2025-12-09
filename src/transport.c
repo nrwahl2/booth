@@ -1098,7 +1098,6 @@ udp_close(struct booth_site *to __attribute__((unused)))
 
 const struct booth_transport booth_transport[] = {
 	[TCP] = {
-		.name = "TCP",
 		.init = tcp_init,
 		.open = tcp_open,
 		.send = tcp_send,
@@ -1109,7 +1108,6 @@ const struct booth_transport booth_transport[] = {
 		.close = tcp_close,
 	},
 	[UDP] = {
-		.name = "UDP",
 		.init = udp_init,
 		.open = udp_open,
 		.send = udp_send,

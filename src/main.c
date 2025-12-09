@@ -402,12 +402,12 @@ static int
 setup_transport(const struct booth_config *conf)
 {
     if (conf->tcp->init(NULL) < 0) {
-        log_error("Failed to init booth_transport %s", conf->tcp->name);
+        log_error("Failed to initialize TCP transport");
         return -1;
     }
 
     if (conf->udp->init(message_recv) < 0) {
-        log_error("Failed to init booth_transport %s", conf->udp->name);
+        log_error("Failed to initialize UDP transport");
         return -1;
     }
 

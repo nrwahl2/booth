@@ -42,7 +42,6 @@ typedef enum {
 #define MAX_MSG_LEN 1024
 
 struct booth_transport {
-	const char *name;
 	int (*init) (void *);
 	int (*open) (struct booth_site *);
 	int (*send) (struct booth_config *, struct booth_site *, void *, int);
