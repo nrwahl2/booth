@@ -401,20 +401,17 @@ setup_config(struct booth_config **conf, int type)
 static int
 setup_transport(const struct booth_config *conf)
 {
-	int rv;
+    if (conf->tcp->init(NULL) < 0) {
+        log_error("Failed to init booth_transport %s", conf->tcp->name);
+        return -1;
+    }
 
-	rv = conf->udp->init(message_recv);
-	if (rv < 0) {
-		log_error("Failed to init booth_transport %s", conf->udp->name);
-		return rv;
-	}
+    if (conf->udp->init(message_recv) < 0) {
+        log_error("Failed to init booth_transport %s", conf->udp->name);
+        return -1;
+    }
 
-	rv = booth_transport[TCP].init(NULL);
-	if (rv < 0) {
-		log_error("failed to init booth_transport[TCP]");
-	}
-
-	return rv;
+    return 0;
 }
 
 static int
@@ -666,7 +663,6 @@ query_get_string_answer(struct booth_config *conf, cmd_request_t cmd)
 	char *data;
 	int data_len;
 	int rv;
-	struct booth_transport const *tpt;
 	int (*test_reply_f) (cmd_result_t reply_code, cmd_request_t cmd);
 	size_t msg_size;
 	void *request;
@@ -693,16 +689,15 @@ query_get_string_answer(struct booth_config *conf, cmd_request_t cmd)
 		goto out;
 	}
 
-	tpt = &booth_transport[TCP];
-	rv = tpt->open(site);
+	rv = conf->tcp->open(site);
 	if (rv < 0)
 		goto out_close;
 
-	rv = tpt->send(conf, site, request, msg_size);
+	rv = conf->tcp->send(conf, site, request, msg_size);
 	if (rv < 0)
 		goto out_close;
 
-	rv = tpt->recv_auth(conf, site, &reply, sizeof(reply));
+	rv = conf->tcp->recv_auth(conf, site, &reply, sizeof(reply));
 	if (rv < 0)
 		goto out_close;
 
@@ -718,7 +713,7 @@ query_get_string_answer(struct booth_config *conf, cmd_request_t cmd)
 		rv = -ENOMEM;
 		goto out_close;
 	}
-	rv = tpt->recv(site, data, data_len);
+	rv = conf->tcp->recv(site, data, data_len);
 	if (rv < 0)
 		goto out_close;
 
@@ -729,7 +724,7 @@ query_get_string_answer(struct booth_config *conf, cmd_request_t cmd)
 out_test_reply:
 	rv = test_reply_f(ntohl(reply.header.result), cmd);
 out_close:
-	tpt->close(site);
+	conf->tcp->close(site);
 out:
 	free(data);
 	return rv;
@@ -741,7 +736,6 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 {
 	struct booth_site *site;
 	struct boothc_ticket_msg reply;
-	struct booth_transport const *tpt;
 	uint32_t leader_id;
 	int rv;
 	int reply_cnt = 0, msg_logged = 0;
@@ -754,9 +748,6 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 
 	rv = -1;
 	site = NULL;
-
-	/* Always use TCP for client - at least for now. */
-	tpt = &booth_transport[TCP];
 
 	if (!*cl.site)
 		site = local;
@@ -797,17 +788,18 @@ do_command(struct booth_config *conf, cmd_request_t cmd)
 redirect:
 	init_header(conf, &cl.msg.header, cmd, 0, cl.options, 0, 0, sizeof(cl.msg));
 
-	rv = tpt->open(site);
+	// Always use TCP for client (at least for now)
+	rv = conf->tcp->open(site);
 	if (rv < 0)
 		goto out_close;
 
-	rv = tpt->send(conf, site, &cl.msg, sendmsglen(&cl.msg));
+	rv = conf->tcp->send(conf, site, &cl.msg, sendmsglen(&cl.msg));
 	if (rv < 0) {
 		goto out_close;
 	}
 
 read_more:
-	rv = tpt->recv_auth(conf, site, &reply, sizeof(reply));
+	rv = conf->tcp->recv_auth(conf, site, &reply, sizeof(reply));
 	if (rv < 0) {
 		/* print any errors depending on the code sent by the
 		 * server */
@@ -817,7 +809,7 @@ read_more:
 
 	rv = test_reply(ntohl(reply.header.result), cmd);
 	if (rv == 1) {
-		tpt->close(site);
+		conf->tcp->close(site);
 		leader_id = ntohl(reply.ticket.leader);
 		if (!find_site_by_id(conf, leader_id, &site)) {
 			log_error("Message with unknown redirect site %x received", leader_id);
@@ -849,7 +841,7 @@ read_more:
 
 out_close:
 	if (site)
-		tpt->close(site);
+		conf->tcp->close(site);
 	return rv;
 }
 

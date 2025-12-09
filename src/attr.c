@@ -131,7 +131,7 @@ test_attr_reply(cmd_result_t reply_code, cmd_request_t cmd)
  *   >=0: success
  */
 static int
-read_server_reply(struct booth_transport const *tpt, struct booth_site *site,
+read_server_reply(const struct booth_config *conf, struct booth_site *site,
                   char *msg)
 {
 	struct boothc_header *header;
@@ -139,12 +139,13 @@ read_server_reply(struct booth_transport const *tpt, struct booth_site *site,
 	int len;
 
 	header = (struct boothc_header *)msg;
-	rv = tpt->recv(site, header, sizeof(*header));
+	rv = conf->tcp->recv(site, header, sizeof(*header));
 	if (rv < 0) {
 		return -2;
 	}
 	len = ntohl(header->length);
-	rv = tpt->recv(site, msg+sizeof(*header), len-sizeof(*header));
+	rv = conf->tcp->recv(site, msg + sizeof(*header),
+			     len - sizeof(*header));
 	if (rv < 0) {
 		return -1;
 	}
@@ -156,7 +157,6 @@ do_attr_command(struct booth_config *conf, cmd_request_t cmd)
 {
 	struct booth_site *site = NULL;
 	struct boothc_header *header;
-	struct booth_transport const *tpt = NULL;
 	int len, rv = -1;
 	char *msg = NULL;
 
@@ -178,16 +178,15 @@ do_attr_command(struct booth_config *conf, cmd_request_t cmd)
 		goto out_close;
 	}
 
-	tpt = &booth_transport[TCP];
-
 	init_header(conf, &cl.attr_msg.header, cmd, 0, cl.options, 0, 0,
 		sizeof(cl.attr_msg));
 
-	rv = tpt->open(site);
+	rv = conf->tcp->open(site);
 	if (rv < 0)
 		goto out_close;
 
-	rv = tpt->send(conf, site, &cl.attr_msg, sendmsglen(&cl.attr_msg));
+	rv = conf->tcp->send(conf, site, &cl.attr_msg,
+			     sendmsglen(&cl.attr_msg));
 	if (rv < 0) {
 		goto out_close;
 	}
@@ -199,7 +198,7 @@ do_attr_command(struct booth_config *conf, cmd_request_t cmd)
 		goto out_close;
 	}
 
-	rv = read_server_reply(tpt, site, msg);
+	rv = read_server_reply(conf, site, msg);
 	header = (struct boothc_header *)msg;
 	if (rv < 0) {
 		if (rv == -1)
@@ -222,10 +221,10 @@ do_attr_command(struct booth_config *conf, cmd_request_t cmd)
 	rv = test_attr_reply(ntohl(header->result), cmd);
 
 out_close:
-	if (tpt && site)
-		tpt->close(site);
-	if (msg)
-		free(msg);
+	if (site != NULL) {
+		conf->tcp->close(site);
+	}
+	free(msg);
 	return rv;
 }
 
