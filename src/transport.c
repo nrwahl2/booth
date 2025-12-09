@@ -932,60 +932,67 @@ ex:
  * @internal
  * First stage of incoming UDP message handling (authentication)
  *
- * @param[in,out] conf    Booth configuration
- * @param[in]	  msg     Message
- * @param[in]     msglen  Message length
+ * @param[in,out] conf  Booth configuration
+ * @param[in]     msg   Message
+ * @param[in]     len   Message length
  *
  * @return 0 on success or negative value (-1 or -errno) on error
  */
 static int
-message_recv(struct booth_config *conf, void *msg, int msglen)
+message_recv(struct booth_config *conf, struct boothc_ticket_msg *msg, int len)
 {
-	/* @TODO Decipher the following comment, which used to be above the
-	 * declaration of an alias for this function.
-	 * ...
-	 * function to be called when handling booth-group-internal messages;
-	 * it's expected to return 0 to indicate success, negative integer
-	 * to indicate silent (or possibly already complained about) error,
-	 * or positive integer to indicate sender's ID that will then be
-	 * emitted in the error log message together with the real source
-	 * address if this is available
-	 */
-	uint32_t from;
-	struct boothc_header *header = msg;
-	struct booth_site *source;
+    /* @TODO Decipher the following comment, which used to be above the
+     * declaration of an alias for this function.
+     * ...
+     * function to be called when handling booth-group-internal messages;
+     * it's expected to return 0 to indicate success, negative integer
+     * to indicate silent (or possibly already complained about) error,
+     * or positive integer to indicate sender's ID that will then be
+     * emitted in the error log message together with the real source
+     * address if this is available
+     */
+    struct boothc_header *header = (struct boothc_header *) msg;
+    uint32_t from = ntohl(header->from);
+    struct booth_site *source = NULL;
 
-	from = ntohl(header->from);
-	if (!find_site_by_id(conf, from, &source)) {
-		/* caller knows the actual source address, pass
-		   the (assuredly) positive number and let it report */
-		from = from ? from : ~from;  /* avoid 0 (success) */
-		return from & (~0U >> 1);  /* avoid negative (error code} */
-	}
+    if (!find_site_by_id(conf, from, &source)) {
+        /* @TODO What do these comments and code mean and why?
+         *
+         * caller knows the actual source address, pass
+         * the (assuredly) positive number and let it report
+         */
+        if (from == 0) {
+            // Avoid 0 (success)
+            from = ~from;
+        }
+        return from & (~0U >> 1);  /* avoid negative (error code} */
+    }
 
-	time(&source->last_recv);
-	source->recv_cnt++;
+    time(&source->last_recv);
+    source->recv_cnt++;
 
-	if (check_boothc_header(header, msglen) < 0) {
-		log_error("message from %s receive error", site_string(source));
-		source->recv_err_cnt++;
-		return -1;
-	}
+    if (check_boothc_header(header, len) < 0) {
+        log_error("message from %s receive error", site_string(source));
+        source->recv_err_cnt++;
+        return -1;
+    }
 
-	if (check_auth(conf, source, msg, msglen)) {
-		log_error("%s failed to authenticate", site_string(source));
-		source->sec_cnt++;
-		return -1;
-	}
+    if (check_auth(conf, source, msg, len)) {
+        log_error("%s failed to authenticate", site_string(source));
+        source->sec_cnt++;
+        return -1;
+    }
 
-	if (ntohl(header->opts) & BOOTH_OPT_ATTR) {
-		/* not used, clients send/retrieve attributes directly from sites */
-		return attr_recv(conf, msg, source);
-	} else {
-		return ticket_recv(conf, msg, source);
-	}
+    if ((ntohl(header->opts) & BOOTH_OPT_ATTR) != 0) {
+        /* Not used, clients send/retrieve attributes directly from sites.
+         *
+         * @TODO Then why is this here at all?
+         */
+        return attr_recv(conf, msg, source);
+    } else {
+        return ticket_recv(conf, msg, source);
+    }
 }
-
 
 /* Receive/process callback for UDP */
 static void
