@@ -1188,7 +1188,7 @@ booth__set_transport_fns(struct booth_config *conf)
  * site
  */
 static int
-verify_ts(struct booth_config *conf, struct booth_site *from, void *buf,
+verify_ts(struct booth_config *conf, struct booth_site *from, const void *buf,
           int len)
 {
 	struct boothc_header *h;
