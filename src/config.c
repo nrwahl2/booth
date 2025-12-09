@@ -229,13 +229,6 @@ skip_while_in(const char *cp, int (*fn)(int), const char *allowed)
 	return (char*)cp;
 }
 
-static inline int
-is_end_of_line(char *cp)
-{
-	char c = *cp;
-	return c == '\n' || c == 0 || c == '#';
-}
-
 static int
 add_ticket(struct booth_config *conf, const char *name,
            struct ticket_config **tkp, const struct ticket_config *def)
@@ -826,7 +819,7 @@ booth__read_config(struct booth_config **conf, const char *path,
         lineno++;
 
         s = g_strchug(line);
-        if (is_end_of_line(s) || (*s == '#')) {
+        if ((*s == '\0') || (*s == '#')) {
             continue;
         }
         key = s;
