@@ -310,7 +310,7 @@ struct booth_config {
     /** Maximum time skew between peers allowed */
 	int maxtimeskew;
 
-    const struct booth_transport *transport;
+    const struct booth_transport *udp;
     uint16_t port;
 
     /** Stores the OR of sites bitmasks. */

@@ -403,10 +403,9 @@ setup_transport(const struct booth_config *conf)
 {
 	int rv;
 
-	rv = conf->transport->init(message_recv);
+	rv = conf->udp->init(message_recv);
 	if (rv < 0) {
-		log_error("Failed to init booth_transport %s",
-			  conf->transport->name);
+		log_error("Failed to init booth_transport %s", conf->udp->name);
 		return rv;
 	}
 

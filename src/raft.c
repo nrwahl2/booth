@@ -796,8 +796,7 @@ vote_for_sender:
 
 	init_ticket_msg(conf, &omsg, OP_VOTE_FOR, OP_REQ_VOTE, RLT_SUCCESS, 0, tk);
 	omsg.ticket.leader = htonl(get_node_id(tk->voted_for));
-	return conf->transport->send_auth(conf, sender, &omsg,
-					  sendmsglen(&omsg));
+	return conf->udp->send_auth(conf, sender, &omsg, sendmsglen(&omsg));
 }
 
 #define is_reason(r, tk) \
