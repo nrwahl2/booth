@@ -32,8 +32,8 @@
 
 /* Forward declaration of the booth config structure that will be defined later.
  * This is necessary here because transport.h references booth_config, but this
- * file also references transport_layer_t.  We need some way to break the
- * circular dependency.
+ * file also references struct booth__transport_fns. We need some way to break
+ * the circular dependency.
  *
  * This also means that config.h must always be included before transport.h in
  * any source files.
@@ -310,8 +310,12 @@ struct booth_config {
     /** Maximum time skew between peers allowed */
 	int maxtimeskew;
 
-    const struct booth_transport *tcp;
-    const struct booth_transport *udp;
+    /* These values of tcp and udp are hard-coded, but accessing them through
+     * the struct booth_config is convenient
+     */
+    const struct booth__transport_fns *tcp;
+    const struct booth__transport_fns *udp;
+
     uint16_t port;
 
     /** Stores the OR of sites bitmasks. */

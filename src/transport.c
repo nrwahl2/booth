@@ -1096,28 +1096,35 @@ udp_close(struct booth_site *to __attribute__((unused)))
 	return 0;
 }
 
-const struct booth_transport booth_transport[] = {
-	[TCP] = {
-		.init = tcp_init,
-		.open = tcp_open,
-		.send = tcp_send,
-		.send_auth = tcp_send_auth,
-		.recv = tcp_recv,
-		.recv_auth = tcp_recv_auth,
-		.broadcast_auth = tcp_broadcast_auth,
-		.close = tcp_close,
-	},
-	[UDP] = {
-		.init = udp_init,
-		.open = udp_open,
-		.send = udp_send,
-		.send_auth = udp_send_auth,
-		.recv = udp_recv,
-		.recv_auth = udp_recv_auth,
-		.broadcast_auth = udp_broadcast_auth,
-		.close = udp_close,
-	},
+static const struct booth__transport_fns tcp_fns = {
+    .init = tcp_init,
+    .open = tcp_open,
+    .send = tcp_send,
+    .send_auth = tcp_send_auth,
+    .recv = tcp_recv,
+    .recv_auth = tcp_recv_auth,
+    .broadcast_auth = tcp_broadcast_auth,
+    .close = tcp_close,
 };
+
+static const struct booth__transport_fns udp_fns = {
+    .init = udp_init,
+    .open = udp_open,
+    .send = udp_send,
+    .send_auth = udp_send_auth,
+    .recv = udp_recv,
+    .recv_auth = udp_recv_auth,
+    .broadcast_auth = udp_broadcast_auth,
+    .close = udp_close,
+};
+
+void
+booth__set_transport_fns(struct booth_config *conf)
+{
+    assert(conf != NULL);
+    conf->tcp = &tcp_fns;
+    conf->udp = &udp_fns;
+}
 
 #if HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH
 

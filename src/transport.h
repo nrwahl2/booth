@@ -24,11 +24,6 @@
 #include "booth.h"
 
 typedef enum {
-	TCP,
-	UDP,
-} transport_layer_t;
-
-typedef enum {
 	ARBITRATOR = 0x50,
 	SITE,
 	CLIENT,
@@ -41,7 +36,7 @@ typedef enum {
  */
 #define MAX_MSG_LEN 1024
 
-struct booth_transport {
+struct booth__transport_fns {
 	int (*init) (void *);
 	int (*open) (struct booth_site *);
 	int (*send) (struct booth_config *, struct booth_site *, void *, int);
@@ -66,7 +61,7 @@ struct booth_transport {
 	int (*close) (struct booth_site *);
 };
 
-extern const struct booth_transport booth_transport[];
+void booth__set_transport_fns(struct booth_config *conf);
 
 /**
  * @internal

@@ -565,8 +565,8 @@ read_config(struct booth_config **conf, const char *path, int type)
 		return -ENOMEM;
 	}
 
-	(*conf)->tcp = &booth_transport[TCP];
-	(*conf)->udp = &booth_transport[UDP];
+	booth__set_transport_fns(*conf);
+
 	(*conf)->port = BOOTH_DEFAULT_PORT;
 	(*conf)->maxtimeskew = BOOTH_DEFAULT_MAX_TIME_SKEW;
 	(*conf)->authkey[0] = '\0';
