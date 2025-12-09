@@ -791,7 +791,6 @@ booth__read_config(struct booth_config **conf, const char *path,
     strcpy((*conf)->arb_user,   "nobody");
     strcpy((*conf)->arb_group,  "nobody");
 
-    do_parse_weights("", defaults.weight);
     defaults.clu_test.path  = NULL;
     defaults.clu_test.pid  = 0;
     defaults.clu_test.status  = 0;
