@@ -84,12 +84,17 @@ typedef char boothc_ticket[BOOTH_NAME_LEN];
 typedef char boothc_attr[BOOTH_NAME_LEN];
 typedef char boothc_attr_value[BOOTH_ATTRVAL_LEN];
 
-/* message option bits */
-enum {
-	BOOTH_OPT_AUTH = 1, /* authentication */
-};
-
 struct boothc_header {
+	/* @COMPAT This has been unused since it was added in 2014 by commit
+	 * 685a2789. It was intended to be used for authentication, and for a
+	 * long	time it was set to BOOTH_OPT_AUTH (1). However, nothing ever
+	 * checked it.
+	 *
+	 * We can think about removing this field. But that would cause us to
+	 * fail	to parse messages from older clients since we would be looking
+	 * for all the header fields 32 bits away from where they actually are.
+	 * Perhaps it would be okay not to support older booth clients.
+	 */
 	/** Various options, message type, authentication
 	 */
 	uint32_t opts;

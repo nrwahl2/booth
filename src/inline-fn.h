@@ -92,13 +92,13 @@ init_header_bare(const struct booth_config *conf, struct boothc_header *h)
 	h->magic   = htonl(BOOTHC_MAGIC);
 	h->version = htonl(BOOTHC_VERSION);
 	h->from    = htonl(local->site_id);
+	h->opts    = htonl(0);
+
 	if (is_auth_req(conf)) {
 		get_time(&now);
-		h->opts  = htonl(BOOTH_OPT_AUTH);
 		h->secs  = htonl(secs_since_epoch(&now));
 		h->usecs = htonl(get_usecs(&now));
 	} else {
-		h->opts  = htonl(0);
 		h->secs  = htonl(0);
 		h->usecs = htonl(0);
 	}
