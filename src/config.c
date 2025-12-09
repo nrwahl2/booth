@@ -229,14 +229,6 @@ skip_while_in(const char *cp, int (*fn)(int), const char *allowed)
 	return (char*)cp;
 }
 
-static inline char *
-skip_until(char *cp, char expected)
-{
-	while (*cp && *cp != expected)
-		cp++;
-	return cp;
-}
-
 static inline int
 is_end_of_line(char *cp)
 {
@@ -872,9 +864,9 @@ exp_equal:
             case '"':
             case '\'':
                 val = s+1;
-                s = skip_until(val, *s);
-                // Terminate value
-                if (!*s) {
+                s = strchr(val, *s);
+
+                if (s == NULL) {
                     error = g_strdup("Unterminated quoted string");
                     goto err;
                 }
