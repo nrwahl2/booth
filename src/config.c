@@ -538,9 +538,8 @@ booth__read_config(struct booth_config **conf, const char *path,
                    action_t action)
 {
     char line[1024] = { 0, };
-    char error_str_buf[1024] = { 0, };
     FILE *fp = NULL;
-    const char *error = NULL;
+    gchar *error = NULL;
     int lineno = 0;
     int min_timeout = 0;
     struct ticket_config defaults = { { 0 } };
@@ -588,8 +587,6 @@ booth__read_config(struct booth_config **conf, const char *path,
     defaults.acquire_after = 0;
     defaults.mode          = TICKET_MODE_AUTO;
 
-    error = "";
-
     log_debug("reading config file %s", path);
     while (fgets(line, sizeof(line), fp)) {
         int i = 0;
@@ -609,7 +606,7 @@ booth__read_config(struct booth_config **conf, const char *path,
         // Key
         end_of_key = skip_while_in(key, isalnum, "-_");
         if (end_of_key == key) {
-            error = "No key";
+            error = g_strdup("No key");
             goto err;
         }
 
@@ -622,7 +619,7 @@ booth__read_config(struct booth_config **conf, const char *path,
 
         if (*s != '=') {
 exp_equal:
-            error = "Expected '=' after key";
+            error = g_strdup("Expected '=' after key");
             goto err;
         }
         s++;
@@ -642,7 +639,7 @@ exp_equal:
                 s = skip_until(val, *s);
                 // Terminate value
                 if (!*s) {
-                    error = "Unterminated quoted string";
+                    error = g_strdup("Unterminated quoted string");
                     goto err;
                 }
 
@@ -650,7 +647,7 @@ exp_equal:
                 *s = 0;
                 s++;
                 if (*(s = skip_while(s, isspace)) && (*s != '#')) {
-                    error = "Surplus data after value";
+                    error = g_strdup("Surplus data after value");
                     goto err;
                 }
 
@@ -659,7 +656,7 @@ exp_equal:
 
             case 0:
 no_value:
-                error = "No value";
+                error = g_strdup("No value");
                 goto err;
                 break;
 
@@ -681,7 +678,7 @@ no_value:
 
 
         if ((strlen(key) > BOOTH_NAME_LEN) || (strlen(val) > BOOTH_NAME_LEN)) {
-            error = "key/value too long";
+            error = g_strdup("key/value too long");
             goto err;
         }
 
@@ -691,9 +688,7 @@ no_value:
                 continue;
             }
 
-            snprintf(error_str_buf, sizeof(error_str_buf),
-                     "Invalid transport protocol \"%s\"", val);
-            error = error_str_buf;
+            error = g_strdup_printf("Invalid transport protocol \"%s\"", val);
             goto err;
         }
 
@@ -782,9 +777,7 @@ no_value:
          * to which ticket the key refers.
          */
         if (!current_tk) {
-            snprintf(error_str_buf, sizeof(error_str_buf),
-                     "Unexpected keyword \"%s\"", key);
-            error = error_str_buf;
+            error = g_strdup_printf("Unexpected keyword \"%s\"", key);
             goto err;
         }
 
@@ -792,7 +785,7 @@ no_value:
             current_tk->term_duration = read_time(val);
 
             if (current_tk->term_duration <= 0) {
-                error = "Expected time >0 for expire";
+                error = g_strdup("Expected time >0 for expire");
                 goto err;
             }
             continue;
@@ -801,7 +794,7 @@ no_value:
         if (strcmp(key, "timeout") == 0) {
             current_tk->timeout = read_time(val);
             if (current_tk->timeout <= 0) {
-                error = "Expected time >0 for timeout";
+                error = g_strdup("Expected time >0 for timeout");
                 goto err;
             }
             if (!min_timeout) {
@@ -818,7 +811,8 @@ no_value:
             if (*s || s == val || current_tk->retries<3
                 || current_tk->retries > 100) {
 
-                error = "Expected plain integer value in the range [3, 100] for retries";
+                error = g_strdup("Expected plain integer value in the range "
+                                 "[3, 100] for retries");
                 goto err;
             }
             continue;
@@ -828,7 +822,7 @@ no_value:
             current_tk->renewal_freq = read_time(val);
 
             if (current_tk->renewal_freq <= 0) {
-                error = "Expected time >0 for renewal-freq";
+                error = g_strdup("Expected time >0 for renewal-freq");
                 goto err;
             }
             continue;
@@ -838,7 +832,7 @@ no_value:
             current_tk->acquire_after = read_time(val);
 
             if (current_tk->acquire_after < 0) {
-                error = "Expected time >=0 for acquire-after";
+                error = g_strdup("Expected time >=0 for acquire-after");
                 goto err;
             }
             continue;
@@ -870,9 +864,7 @@ no_value:
             continue;
         }
 
-        snprintf(error_str_buf, sizeof(error_str_buf), "Unknown keyword \"%s\"",
-                 key);
-        error = error_str_buf;
+        error = g_strdup_printf("Unknown keyword \"%s\"", key);
         goto err;
     }
     fclose(fp);
@@ -915,11 +907,13 @@ no_value:
 
 err:
     fclose(fp);
-out:
-    log_error("%s in config file line %d", error, lineno);
 
-    free(*conf);
-    *conf = NULL;
+out:
+    log_error("%s in config file line %d", ((error != NULL)? error : "Error"),
+              lineno);
+    g_free(error);
+
+    g_clear_pointer(conf, free);
     return -1;
 }
 
