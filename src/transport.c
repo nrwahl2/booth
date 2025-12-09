@@ -52,14 +52,6 @@
 
 struct booth_site *local = NULL;
 
-/* function to be called when handling booth-group-internal messages;
- * it's expected to return 0 to indicate success, negative integer
- * to indicate silent (or possibly already complained about) error,
- * or positive integer to indicate sender's ID that will then be
- * emitted in the error log message together with the real source
- * address if this is available */
-static int (*deliver_fn) (struct booth_config *conf, void *msg, int msglen);
-
 static void
 parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 {
@@ -654,7 +646,7 @@ setup_tcp_listener(int test_only)
 }
 
 static int
-tcp_init(void *unused __attribute__((unused)))
+tcp_init(void)
 {
 	int rv;
 
@@ -936,6 +928,65 @@ ex:
 	return -1;
 }
 
+/**
+ * @internal
+ * First stage of incoming UDP message handling (authentication)
+ *
+ * @param[in,out] conf    Booth configuration
+ * @param[in]	  msg     Message
+ * @param[in]     msglen  Message length
+ *
+ * @return 0 on success or negative value (-1 or -errno) on error
+ */
+static int
+message_recv(struct booth_config *conf, void *msg, int msglen)
+{
+	/* @TODO Decipher the following comment, which used to be above the
+	 * declaration of an alias for this function.
+	 * ...
+	 * function to be called when handling booth-group-internal messages;
+	 * it's expected to return 0 to indicate success, negative integer
+	 * to indicate silent (or possibly already complained about) error,
+	 * or positive integer to indicate sender's ID that will then be
+	 * emitted in the error log message together with the real source
+	 * address if this is available
+	 */
+	uint32_t from;
+	struct boothc_header *header = msg;
+	struct booth_site *source;
+
+	from = ntohl(header->from);
+	if (!find_site_by_id(conf, from, &source)) {
+		/* caller knows the actual source address, pass
+		   the (assuredly) positive number and let it report */
+		from = from ? from : ~from;  /* avoid 0 (success) */
+		return from & (~0U >> 1);  /* avoid negative (error code} */
+	}
+
+	time(&source->last_recv);
+	source->recv_cnt++;
+
+	if (check_boothc_header(header, msglen) < 0) {
+		log_error("message from %s receive error", site_string(source));
+		source->recv_err_cnt++;
+		return -1;
+	}
+
+	if (check_auth(conf, source, msg, msglen)) {
+		log_error("%s failed to authenticate", site_string(source));
+		source->sec_cnt++;
+		return -1;
+	}
+
+	if (ntohl(header->opts) & BOOTH_OPT_ATTR) {
+		/* not used, clients send/retrieve attributes directly from sites */
+		return attr_recv(conf, msg, source);
+	} else {
+		return ticket_recv(conf, msg, source);
+	}
+}
+
+
 /* Receive/process callback for UDP */
 static void
 process_recv(struct booth_config *conf, struct client *client)
@@ -958,7 +1009,7 @@ process_recv(struct booth_config *conf, struct client *client)
 		return;
 	}
 
-	rv = deliver_fn(conf, (void*) msg, rv);
+	rv = message_recv(conf, msg, rv);
 	if (rv > 0) {
 		if (getnameinfo((struct sockaddr *) &sa, sa_len, buffer,
 			        sizeof(buffer), NULL, 0, NI_NUMERICHOST) == 0) {
@@ -970,7 +1021,7 @@ process_recv(struct booth_config *conf, struct client *client)
 }
 
 static int
-udp_init(void *f)
+udp_init(void)
 {
 	int rv;
 
@@ -979,7 +1030,6 @@ udp_init(void *f)
 		return rv;
 	}
 
-	deliver_fn = f;
 	booth__add_client(local->udp_fd, process_recv);
 	return 0;
 }
@@ -1245,43 +1295,4 @@ send_header_plus(struct booth_config *conf, int fd, struct boothc_hdr_msg *msg,
 	}
 
 	return rv;
-}
-
-/* UDP message receiver (see also deliver_fn declaration's comment) */
-int
-message_recv(struct booth_config *conf, void *msg, int msglen)
-{
-	uint32_t from;
-	struct boothc_header *header = msg;
-	struct booth_site *source;
-
-	from = ntohl(header->from);
-	if (!find_site_by_id(conf, from, &source)) {
-		/* caller knows the actual source address, pass
-		   the (assuredly) positive number and let it report */
-		from = from ? from : ~from;  /* avoid 0 (success) */
-		return from & (~0U >> 1);  /* avoid negative (error code} */
-	}
-
-	time(&source->last_recv);
-	source->recv_cnt++;
-
-	if (check_boothc_header(header, msglen) < 0) {
-		log_error("message from %s receive error", site_string(source));
-		source->recv_err_cnt++;
-		return -1;
-	}
-
-	if (check_auth(conf, source, msg, msglen)) {
-		log_error("%s failed to authenticate", site_string(source));
-		source->sec_cnt++;
-		return -1;
-	}
-
-	if (ntohl(header->opts) & BOOTH_OPT_ATTR) {
-		/* not used, clients send/retrieve attributes directly from sites */
-		return attr_recv(conf, msg, source);
-	} else {
-		return ticket_recv(conf, msg, source);
-	}
 }

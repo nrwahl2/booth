@@ -37,7 +37,7 @@ typedef enum {
 #define MAX_MSG_LEN 1024
 
 struct booth__transport_fns {
-	int (*init) (void *);
+	int (*init) (void);
 	int (*open) (struct booth_site *);
 	int (*send) (struct booth_config *, struct booth_site *, void *, int);
 
@@ -79,18 +79,6 @@ int find_myself(struct booth_config *conf, struct booth_site **me,
 int check_boothc_header(struct boothc_header *data, int len_incl_data);
 
 int setup_tcp_listener(int test_only);
-
-/**
- * @internal
- * First stage of incoming datagram handling (authentication)
- *
- * @param[in,out] conf config object to refer to
- * @param[in] msg raw message to act upon
- * @param[in] msglen length of #msg
- *
- * @return 0 on success or negative value (-1 or -errno) on error
- */
-int message_recv(struct booth_config *conf, void *msg, int msglen);
 
 /**
  * @internal
