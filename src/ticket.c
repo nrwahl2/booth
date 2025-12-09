@@ -47,8 +47,6 @@
 #include "request.h"
 #include "manual.h"
 
-extern int TIME_RES;
-
 /*!
  * \internal
  * \brief Call a function for each configured site
@@ -1527,7 +1525,7 @@ set_ticket_wakeup(struct ticket_config *tk)
 		booth__ticket_debug(tk,
 				    "ticket will be woken up after up to one "
 				    "hour");
-		ticket_next_cron_in(tk, 3600*TIME_RES);
+		ticket_next_cron_in(tk, 3600 * BOOTH__TIME_RES);
 
 		switch (tk->state) {
 		case ST_LEADER:
@@ -1590,7 +1588,7 @@ set_ticket_wakeup(struct ticket_config *tk)
 		booth__ticket_debug(tk,
 				    "manual ticket will be woken up after up "
 				    "to six minutes");
-		ticket_next_cron_in(tk, 60 * TIME_RES);
+		ticket_next_cron_in(tk, 60 * BOOTH__TIME_RES);
 
 		/* For manual tickets, no earlier timeout could be set in a similar
 		 * way as it is done in a switch above for automatic tickets.

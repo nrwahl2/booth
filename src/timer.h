@@ -27,6 +27,8 @@
 #include <assert.h>
 #include <sys/time.h>
 
+#define BOOTH__TIME_RES 1000
+
 #if _POSIX_TIMERS > 0
 
 #if defined(CLOCK_MONOTONIC)
@@ -36,7 +38,7 @@
 #endif
 
 #define NSECS 1000000000L /* nanoseconds */
-#define TIME_FAC (NSECS/TIME_RES)
+#define TIME_FAC (NSECS / BOOTH__TIME_RES)
 #define SUBSEC tv_nsec
 #define SUBSEC_FAC NSECS
 
@@ -61,7 +63,7 @@ time_t unwall_ts(time_t t);
 
 #define MUSECS 1000000L /* microseconds */
 #define SUBSEC_FAC MUSECS
-#define TIME_FAC (MUSECS/TIME_RES)
+#define TIME_FAC (MUSECS / BOOTH__TIME_RES)
 #define SUBSEC tv_usec
 
 typedef struct timeval timetype;
@@ -87,10 +89,12 @@ int time_left(timetype *p);
 void copy_time(timetype *src, timetype *dst);
 void interval_add(timetype *p, int interval, timetype *res);
 int is_time_set(const timetype *p);
-#define intfmt(t) "%d.%03d", (t)/TIME_RES, ((t)<0?-(t):(t))%TIME_RES
 
-/* random time from 0 to t ms (1/TIME_RES) */
-#define rand_time(t) cl_rand_from_interval(0, t*(TIME_RES/1000))
+#define intfmt(t) "%d.%03d", ((t) / BOOTH__TIME_RES), \
+    ((((t) < 0)? -(t) : (t)) % BOOTH__TIME_RES)
+
+/* random time from 0 to t ms (1 / BOOTH__TIME_RES) */
+#define rand_time(t) cl_rand_from_interval(0, t * (BOOTH__TIME_RES / 1000))
 
 #define round2secs(p) \
 	((p)->tv_sec + ((p)->SUBSEC + SUBSEC_FAC/2)/SUBSEC_FAC)

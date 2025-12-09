@@ -29,10 +29,8 @@
 #include "config.h"
 #include "log.h"
 
-extern int TIME_RES;
-
-#define DEFAULT_TICKET_EXPIRY	(600*TIME_RES)
-#define DEFAULT_TICKET_TIMEOUT	(5*TIME_RES)
+#define DEFAULT_TICKET_EXPIRY	(600 * BOOTH__TIME_RES)
+#define DEFAULT_TICKET_TIMEOUT	(5 * BOOTH__TIME_RES)
 #define DEFAULT_RETRIES			10
 
 bool booth__foreach_site(struct booth_config *conf,

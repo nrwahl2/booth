@@ -21,7 +21,6 @@
 /* which time resolution makes most sense?
  * the factors are clock resolution and network latency
  */
-int TIME_RES = 1000;
 int TIME_MULT = 1;
 
 int
@@ -30,10 +29,10 @@ time_sub_int(timetype *a, timetype *b)
 	timetype res;
 
 	time_sub(a, b, &res);
-	return res.tv_sec*TIME_RES + res.SUBSEC/TIME_FAC;
+	return (res.tv_sec * BOOTH__TIME_RES) + (res.SUBSEC / TIME_FAC);
 }
 
-/* interval (b) is in ms (1/TIME_RES) */
+/* interval (b) is in ms (1 / BOOTH__TIME_RES) */
 void
 interval_add(timetype *a, int b, timetype *res)
 {

@@ -125,12 +125,15 @@ init_header(const struct booth_config *conf, struct boothc_header *header,
 	(((tk)->state == ST_CANDIDATE && (tk)->last_valid_tk) ? \
 	(tk)->last_valid_tk->current_term : (tk)->current_term)
 
-extern int TIME_RES, TIME_MULT;
+extern int TIME_MULT;
 
 #define msg_term_time(msg) \
-	ntohl((msg)->ticket.term_valid_for)*TIME_RES/TIME_MULT
-#define set_msg_term_time(msg, tk) \
-	(msg)->ticket.term_valid_for = htonl(term_time_left(tk)*TIME_MULT/TIME_RES)
+    (ntohl((msg)->ticket.term_valid_for) * BOOTH__TIME_RES / TIME_MULT)
+
+#define set_msg_term_time(msg, tk) do {                                 \
+        (msg)->ticket.term_valid_for =                                  \
+            htonl(term_time_left(tk) * TIME_MULT / BOOTH__TIME_RES);    \
+    } while (0)
 
 static inline void
 init_ticket_msg(const struct booth_config *conf, struct boothc_ticket_msg *msg,
