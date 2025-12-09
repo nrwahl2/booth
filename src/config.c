@@ -537,13 +537,10 @@ int
 booth__read_config(struct booth_config **conf, const char *path,
                    action_t action)
 {
-    char line[1024];
-    char error_str_buf[1024];
-    FILE *fp;
-    char *s, *key, *val, *end_of_key;
-    const char *error;
-    char *cp, *cp2;
-    int i;
+    char line[1024] = { 0, };
+    char error_str_buf[1024] = { 0, };
+    FILE *fp = NULL;
+    const char *error = NULL;
     int lineno = 0;
     int min_timeout = 0;
     struct ticket_config defaults = { { 0 } };
@@ -595,6 +592,12 @@ booth__read_config(struct booth_config **conf, const char *path,
 
     log_debug("reading config file %s", path);
     while (fgets(line, sizeof(line), fp)) {
+        int i = 0;
+        char *s = NULL;
+        char *key = NULL;
+        char *val = NULL;
+        char *end_of_key = NULL;
+
         lineno++;
 
         s = skip_while(line, isspace);
@@ -880,6 +883,9 @@ no_value:
 
     // Default: make config name match config filename
     if (!(*conf)->name[0]) {
+        char *cp = NULL;
+        char *cp2 = NULL;
+
         cp = strrchr(path, '/');
         cp = cp ? cp+1 : (char *)path;
         cp2 = strrchr(cp, '.');
