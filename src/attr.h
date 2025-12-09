@@ -56,18 +56,6 @@ int do_attr_command(struct booth_config *conf, cmd_request_t cmd);
 int process_attr_request(struct booth_config *conf, struct client *req_client,
 			 void *buf);
 
-/**
- * @internal
- * Second stage of incoming message handling (after authentication)
- *
- * @param[in,out] conf   config object to refer to
- * @param[in]     buf    incoming message
- * @param[in]     source site of the sender
- *
- * @return -1 on error, 0 otherwise
- */
-int attr_recv(struct booth_config *conf, void *buf, struct booth_site *source);
-
 int store_geo_attr(struct ticket_config *tk, const char *name, const char *val, int notime);
 
 #endif /* _ATTR_H */

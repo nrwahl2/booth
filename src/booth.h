@@ -87,7 +87,6 @@ typedef char boothc_attr_value[BOOTH_ATTRVAL_LEN];
 /* message option bits */
 enum {
 	BOOTH_OPT_AUTH = 1, /* authentication */
-	BOOTH_OPT_ATTR = 4, /* attr message type, otherwise ticket */
 };
 
 struct boothc_header {

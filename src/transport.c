@@ -983,15 +983,7 @@ message_recv(struct booth_config *conf, struct boothc_ticket_msg *msg, int len)
         return -1;
     }
 
-    if ((ntohl(header->opts) & BOOTH_OPT_ATTR) != 0) {
-        /* Not used, clients send/retrieve attributes directly from sites.
-         *
-         * @TODO Then why is this here at all?
-         */
-        return attr_recv(conf, msg, source);
-    } else {
-        return ticket_recv(conf, msg, source);
-    }
+    return ticket_recv(conf, msg, source);
 }
 
 /* Receive/process callback for UDP */

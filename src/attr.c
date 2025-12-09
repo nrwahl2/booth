@@ -466,30 +466,3 @@ reply_now:
 	send_header_plus(conf, req_client->fd, &hdr, NULL, 0);
 	return 1;
 }
-
-/* read attr message from another site */
-
-/* this is a NOOP and it should never be invoked
- * only clients retrieve/manage attributes and they connect
- * directly to the target site
- */
-int
-attr_recv(struct booth_config *conf, void *buf, struct booth_site *source)
-{
-	struct boothc_attr_msg *msg;
-	struct ticket_config *tk;
-
-	msg = (struct boothc_attr_msg *)buf;
-
-	log_warn("unexpected attribute message from %s",
-			site_string(source));
-
-	if (!check_ticket(conf, msg->attr.tkt_id, &tk)) {
-		log_warn("got invalid ticket name %s from %s",
-				msg->attr.tkt_id, site_string(source));
-		source->invalid_cnt++;
-		return -1;
-	}
-
-	return 0;
-}
