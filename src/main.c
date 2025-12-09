@@ -346,7 +346,7 @@ setup_config(struct booth_config **conf, int type)
 
 	assert(conf != NULL);
 
-	rv = read_config(conf, cl.configfile, type);
+	rv = booth__read_config(conf, cl.configfile, type);
 	if (rv < 0) {
 		return rv;
 	}

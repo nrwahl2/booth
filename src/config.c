@@ -534,380 +534,387 @@ err_out:
 extern int poll_timeout;
 
 int
-read_config(struct booth_config **conf, const char *path, int type)
+booth__read_config(struct booth_config **conf, const char *path,
+                   action_t action)
 {
-	char line[1024];
-	char error_str_buf[1024];
-	FILE *fp;
-	char *s, *key, *val, *end_of_key;
-	const char *error;
-	char *cp, *cp2;
-	int i;
-	int lineno = 0;
-	int min_timeout = 0;
-	struct ticket_config defaults = { { 0 } };
-	struct ticket_config *current_tk = NULL;
+    char line[1024];
+    char error_str_buf[1024];
+    FILE *fp;
+    char *s, *key, *val, *end_of_key;
+    const char *error;
+    char *cp, *cp2;
+    int i;
+    int lineno = 0;
+    int min_timeout = 0;
+    struct ticket_config defaults = { { 0 } };
+    struct ticket_config *current_tk = NULL;
 
-	assert(conf != NULL);
-	free(*conf);
+    assert(conf != NULL);
+    free(*conf);
 
-	fp = fopen(path, "r");
-	if (!fp) {
-		log_error("failed to open %s: %s", path, strerror(errno));
-		*conf = NULL;
-		return -1;
-	}
+    fp = fopen(path, "r");
+    if (!fp) {
+        log_error("failed to open %s: %s", path, strerror(errno));
+        *conf = NULL;
+        return -1;
+    }
 
-	*conf = calloc(1, sizeof(struct booth_config));
-	if (*conf == NULL) {
-		fclose(fp);
-		log_error("failed to alloc memory for booth config");
-		return -ENOMEM;
-	}
+    *conf = calloc(1, sizeof(struct booth_config));
+    if (*conf == NULL) {
+        fclose(fp);
+        log_error("failed to alloc memory for booth config");
+        return -ENOMEM;
+    }
 
-	booth__set_transport_fns(*conf);
+    booth__set_transport_fns(*conf);
 
-	(*conf)->port = BOOTH_DEFAULT_PORT;
-	(*conf)->maxtimeskew = BOOTH_DEFAULT_MAX_TIME_SKEW;
-	(*conf)->authkey[0] = '\0';
+    (*conf)->port = BOOTH_DEFAULT_PORT;
+    (*conf)->maxtimeskew = BOOTH_DEFAULT_MAX_TIME_SKEW;
+    (*conf)->authkey[0] = '\0';
 
+    // Provide safe defaults. -1 is reserved, though.
+    (*conf)->uid = -2;
+    (*conf)->gid = -2;
+    strcpy((*conf)->site_user,  "hacluster");
+    strcpy((*conf)->site_group, "haclient");
+    strcpy((*conf)->arb_user,   "nobody");
+    strcpy((*conf)->arb_group,  "nobody");
 
-	/* Provide safe defaults. -1 is reserved, though. */
-	(*conf)->uid = -2;
-	(*conf)->gid = -2;
-	strcpy((*conf)->site_user,  "hacluster");
-	strcpy((*conf)->site_group, "haclient");
-	strcpy((*conf)->arb_user,   "nobody");
-	strcpy((*conf)->arb_group,  "nobody");
+    parse_weights("", defaults.weight);
+    defaults.clu_test.path  = NULL;
+    defaults.clu_test.pid  = 0;
+    defaults.clu_test.status  = 0;
+    defaults.clu_test.progstate  = EXTPROG_IDLE;
+    defaults.term_duration        = DEFAULT_TICKET_EXPIRY;
+    defaults.timeout       = DEFAULT_TICKET_TIMEOUT;
+    defaults.retries       = DEFAULT_RETRIES;
+    defaults.acquire_after = 0;
+    defaults.mode          = TICKET_MODE_AUTO;
 
-	parse_weights("", defaults.weight);
-	defaults.clu_test.path  = NULL;
-	defaults.clu_test.pid  = 0;
-	defaults.clu_test.status  = 0;
-	defaults.clu_test.progstate  = EXTPROG_IDLE;
-	defaults.term_duration        = DEFAULT_TICKET_EXPIRY;
-	defaults.timeout       = DEFAULT_TICKET_TIMEOUT;
-	defaults.retries       = DEFAULT_RETRIES;
-	defaults.acquire_after = 0;
-	defaults.mode          = TICKET_MODE_AUTO;
+    error = "";
 
-	error = "";
+    log_debug("reading config file %s", path);
+    while (fgets(line, sizeof(line), fp)) {
+        lineno++;
 
-	log_debug("reading config file %s", path);
-	while (fgets(line, sizeof(line), fp)) {
-		lineno++;
+        s = skip_while(line, isspace);
+        if (is_end_of_line(s) || (*s == '#')) {
+            continue;
+        }
+        key = s;
 
-		s = skip_while(line, isspace);
-		if (is_end_of_line(s) || *s == '#')
-			continue;
-		key = s;
+        // Key
+        end_of_key = skip_while_in(key, isalnum, "-_");
+        if (end_of_key == key) {
+            error = "No key";
+            goto err;
+        }
 
+        if (!*end_of_key) {
+            goto exp_equal;
+        }
 
-		/* Key */
-		end_of_key = skip_while_in(key, isalnum, "-_");
-		if (end_of_key == key) {
-			error = "No key";
-			goto err;
-		}
+        // Whitespace, and something else but nothing more?
+        s = skip_while(end_of_key, isspace);
 
-		if (!*end_of_key)
-			goto exp_equal;
-
-
-		/* whitespace, and something else but nothing more? */
-		s = skip_while(end_of_key, isspace);
-
-
-		if (*s != '=') {
+        if (*s != '=') {
 exp_equal:
-			error = "Expected '=' after key";
-			goto err;
-		}
-		s++;
+            error = "Expected '=' after key";
+            goto err;
+        }
+        s++;
 
-		/* It's my buffer, and I terminate if I want to. */
-		/* But not earlier than that, because we had to check for = */
-		*end_of_key = 0;
+        /* It's my buffer, and I terminate if I want to. But not earlier than
+         * this, because we had to check for '='.
+         */
+        *end_of_key = 0;
 
 
-		/* Value tokenizing */
-		s = skip_while(s, isspace);
-		switch (*s) {
-			case '"':
-			case '\'':
-				val = s+1;
-				s = skip_until(val, *s);
-				/* Terminate value */
-				if (!*s) {
-					error = "Unterminated quoted string";
-					goto err;
-				}
+        // Value tokenizing
+        s = skip_while(s, isspace);
+        switch (*s) {
+            case '"':
+            case '\'':
+                val = s+1;
+                s = skip_until(val, *s);
+                // Terminate value
+                if (!*s) {
+                    error = "Unterminated quoted string";
+                    goto err;
+                }
 
-				/* Remove and skip quote */
-				*s = 0;
-				s++;
-				if (*(s = skip_while(s, isspace)) && *s != '#') {
-					error = "Surplus data after value";
-					goto err;
-				}
+                // Remove and skip quote
+                *s = 0;
+                s++;
+                if (*(s = skip_while(s, isspace)) && (*s != '#')) {
+                    error = "Surplus data after value";
+                    goto err;
+                }
 
-				*s = 0;
+                *s = 0;
+                break;
 
-				break;
-
-			case 0:
+            case 0:
 no_value:
-				error = "No value";
-				goto err;
-				break;
+                error = "No value";
+                goto err;
+                break;
 
-			default:
-				val = s;
-				/* Rest of line. */
-				i = strlen(s);
-				/* i > 0 because of "case 0" above. */
-				while (i > 0 && isspace(s[i-1]))
-					i--;
-				s += i;
-				*s = 0;
-		}
+            default:
+                val = s;
+                // Rest of line
+                i = strlen(s);
 
-		if (val == s)
-			goto no_value;
+                // i > 0 because of "case 0" above
+                while ((i > 0) && isspace(s[i-1])) {
+                    i--;
+                }
+                s += i;
+                *s = 0;
+        }
+
+        if (val == s)
+            goto no_value;
 
 
-		if (strlen(key) > BOOTH_NAME_LEN
-				|| strlen(val) > BOOTH_NAME_LEN) {
-			error = "key/value too long";
-			goto err;
-		}
+        if ((strlen(key) > BOOTH_NAME_LEN) || (strlen(val) > BOOTH_NAME_LEN)) {
+            error = "key/value too long";
+            goto err;
+        }
 
-		// @COMPAT Deprecated since 1.3
-		if (strcmp(key, "transport") == 0) {
-			if (strcasecmp(val, "UDP") == 0) {
-				continue;
-			}
+        // @COMPAT Deprecated since 1.3
+        if (strcmp(key, "transport") == 0) {
+            if (strcasecmp(val, "UDP") == 0) {
+                continue;
+            }
 
-			snprintf(error_str_buf, sizeof(error_str_buf),
-				 "Invalid transport protocol \"%s\"", val);
-			error = error_str_buf;
-			goto err;
-		}
+            snprintf(error_str_buf, sizeof(error_str_buf),
+                     "Invalid transport protocol \"%s\"", val);
+            error = error_str_buf;
+            goto err;
+        }
 
-		if (strcmp(key, "port") == 0) {
-			(*conf)->port = atoi(val);
-			continue;
-		}
+        if (strcmp(key, "port") == 0) {
+            (*conf)->port = atoi(val);
+            continue;
+        }
 
-		if (strcmp(key, "name") == 0) {
-			safe_copy((*conf)->name,
-					val, BOOTH_NAME_LEN,
-					"name");
-			continue;
-		}
+        if (strcmp(key, "name") == 0) {
+            safe_copy((*conf)->name, val, BOOTH_NAME_LEN, "name");
+            continue;
+        }
 
 #if HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH
-		if (strcmp(key, "authfile") == 0) {
-			safe_copy((*conf)->authfile,
-					val, BOOTH_PATH_LEN,
-					"authfile");
-			continue;
-		}
+        if (strcmp(key, "authfile") == 0) {
+            safe_copy((*conf)->authfile, val, BOOTH_PATH_LEN, "authfile");
+            continue;
+        }
 
-		if (strcmp(key, "maxtimeskew") == 0) {
-			(*conf)->maxtimeskew = atoi(val);
-			continue;
-		}
+        if (strcmp(key, "maxtimeskew") == 0) {
+            (*conf)->maxtimeskew = atoi(val);
+            continue;
+        }
 #endif
 
-		if (strcmp(key, "site") == 0) {
-			if (add_site(*conf, val, SITE)) {
-				goto err;
-			}
-			continue;
-		}
+        if (strcmp(key, "site") == 0) {
+            if (add_site(*conf, val, SITE)) {
+                goto err;
+            }
+            continue;
+        }
 
-		if (strcmp(key, "arbitrator") == 0) {
-			if (add_site(*conf, val, ARBITRATOR)) {
-				goto err;
-			}
-			continue;
-		}
+        if (strcmp(key, "arbitrator") == 0) {
+            if (add_site(*conf, val, ARBITRATOR)) {
+                goto err;
+            }
+            continue;
+        }
 
-		if (strcmp(key, "site-user") == 0) {
-			safe_copy((*conf)->site_user, optarg, BOOTH_NAME_LEN,
-			          "site-user");
-			continue;
-		}
-		if (strcmp(key, "site-group") == 0) {
-			safe_copy((*conf)->site_group, optarg, BOOTH_NAME_LEN,
-			          "site-group");
-			continue;
-		}
-		if (strcmp(key, "arbitrator-user") == 0) {
-			safe_copy((*conf)->arb_user, optarg, BOOTH_NAME_LEN,
-			          "arbitrator-user");
-			continue;
-		}
-		if (strcmp(key, "arbitrator-group") == 0) {
-			safe_copy((*conf)->arb_group, optarg, BOOTH_NAME_LEN,
-			          "arbitrator-group");
-			continue;
-		}
+        if (strcmp(key, "site-user") == 0) {
+            safe_copy((*conf)->site_user, optarg, BOOTH_NAME_LEN, "site-user");
+            continue;
+        }
 
-		if (strcmp(key, "debug") == 0) {
-			if (type != CLIENT && type != GEOSTORE)
-				debug_level = max(debug_level, atoi(val));
-			continue;
-		}
+        if (strcmp(key, "site-group") == 0) {
+            safe_copy((*conf)->site_group, optarg, BOOTH_NAME_LEN,
+                      "site-group");
+            continue;
+        }
 
-		if (strcmp(key, "ticket") == 0) {
-			if (current_tk && strcmp(current_tk->name, "__defaults__")) {
-				if (!postproc_ticket(current_tk)) {
-					goto err;
-				}
-			}
-			if (!strcmp(val, "__defaults__")) {
-				current_tk = &defaults;
-			} else if (add_ticket(*conf, val, &current_tk,
-			                      &defaults)) {
-				goto err;
-			}
-			continue;
-		}
+        if (strcmp(key, "arbitrator-user") == 0) {
+            safe_copy((*conf)->arb_user, optarg, BOOTH_NAME_LEN,
+                      "arbitrator-user");
+            continue;
+        }
 
-		/* current_tk must be allocated at this point, otherwise
-		 * we don't know to which ticket the key refers
-		 */
-		if (!current_tk) {
-			(void)snprintf(error_str_buf, sizeof(error_str_buf),
-			    "Unexpected keyword \"%s\"", key);
-			error = error_str_buf;
-			goto err;
-		}
+        if (strcmp(key, "arbitrator-group") == 0) {
+            safe_copy((*conf)->arb_group, optarg, BOOTH_NAME_LEN,
+                      "arbitrator-group");
+            continue;
+        }
 
-		if (strcmp(key, "expire") == 0) {
-			current_tk->term_duration = read_time(val);
-			if (current_tk->term_duration <= 0) {
-				error = "Expected time >0 for expire";
-				goto err;
-			}
-			continue;
-		}
+        if (strcmp(key, "debug") == 0) {
+            if ((action != CLIENT) && (action != GEOSTORE)) {
+                debug_level = max(debug_level, atoi(val));
+            }
+            continue;
+        }
 
-		if (strcmp(key, "timeout") == 0) {
-			current_tk->timeout = read_time(val);
-			if (current_tk->timeout <= 0) {
-				error = "Expected time >0 for timeout";
-				goto err;
-			}
-			if (!min_timeout) {
-				min_timeout = current_tk->timeout;
-			} else {
-				min_timeout = min(min_timeout, current_tk->timeout);
-			}
-			continue;
-		}
+        if (strcmp(key, "ticket") == 0) {
+            if (current_tk && strcmp(current_tk->name, "__defaults__")) {
+                if (!postproc_ticket(current_tk)) {
+                    goto err;
+                }
+            }
 
-		if (strcmp(key, "retries") == 0) {
-			current_tk->retries = strtol(val, &s, 0);
-			if (*s || s == val ||
-					current_tk->retries<3 || current_tk->retries > 100) {
-				error = "Expected plain integer value in the range [3, 100] for retries";
-				goto err;
-			}
-			continue;
-		}
+            if (!strcmp(val, "__defaults__")) {
+                current_tk = &defaults;
+            } else if (add_ticket(*conf, val, &current_tk, &defaults)) {
+                goto err;
+            }
+            continue;
+        }
 
-		if (strcmp(key, "renewal-freq") == 0) {
-			current_tk->renewal_freq = read_time(val);
-			if (current_tk->renewal_freq <= 0) {
-				error = "Expected time >0 for renewal-freq";
-				goto err;
-			}
-			continue;
-		}
+        /* current_tk must be allocated at this point. Otherwise, we don't know
+         * to which ticket the key refers.
+         */
+        if (!current_tk) {
+            snprintf(error_str_buf, sizeof(error_str_buf),
+                     "Unexpected keyword \"%s\"", key);
+            error = error_str_buf;
+            goto err;
+        }
 
-		if (strcmp(key, "acquire-after") == 0) {
-			current_tk->acquire_after = read_time(val);
-			if (current_tk->acquire_after < 0) {
-				error = "Expected time >=0 for acquire-after";
-				goto err;
-			}
-			continue;
-		}
+        if (strcmp(key, "expire") == 0) {
+            current_tk->term_duration = read_time(val);
 
-		if (strcmp(key, "before-acquire-handler") == 0) {
-			if (parse_extprog(val, current_tk)) {
-				goto err;
-			}
-			continue;
-		}
+            if (current_tk->term_duration <= 0) {
+                error = "Expected time >0 for expire";
+                goto err;
+            }
+            continue;
+        }
 
-		if (strcmp(key, "attr-prereq") == 0) {
-			if (parse_attr_prereq(val, current_tk)) {
-				goto err;
-			}
-			continue;
-		}
+        if (strcmp(key, "timeout") == 0) {
+            current_tk->timeout = read_time(val);
+            if (current_tk->timeout <= 0) {
+                error = "Expected time >0 for timeout";
+                goto err;
+            }
+            if (!min_timeout) {
+                min_timeout = current_tk->timeout;
+            } else {
+                min_timeout = min(min_timeout, current_tk->timeout);
+            }
+            continue;
+        }
 
-		if (strcmp(key, "mode") == 0) {
-			current_tk->mode = retrieve_ticket_mode(val);
-			continue;
-		}
+        if (strcmp(key, "retries") == 0) {
+            current_tk->retries = strtol(val, &s, 0);
 
-		if (strcmp(key, "weights") == 0) {
-			if (parse_weights(val, current_tk->weight) < 0)
-				goto err;
-			continue;
-		}
+            if (*s || s == val || current_tk->retries<3
+                || current_tk->retries > 100) {
 
-		(void)snprintf(error_str_buf, sizeof(error_str_buf),
-		    "Unknown keyword \"%s\"", key);
-		error = error_str_buf;
-		goto err;
-	}
-	fclose(fp);
+                error = "Expected plain integer value in the range [3, 100] for retries";
+                goto err;
+            }
+            continue;
+        }
 
-	if (((*conf)->site_count % 2) == 0) {
-		log_warn("Odd number of nodes is strongly recommended!");
-	}
+        if (strcmp(key, "renewal-freq") == 0) {
+            current_tk->renewal_freq = read_time(val);
 
-	/* Default: make config name match config filename. */
-	if (!(*conf)->name[0]) {
-		cp = strrchr(path, '/');
-		cp = cp ? cp+1 : (char *)path;
-		cp2 = strrchr(cp, '.');
-		if (!cp2)
-			cp2 = cp + strlen(cp);
-		if (cp2-cp >= BOOTH_NAME_LEN) {
-			log_error("booth config file name too long");
-			goto out;
-		}
-		strncpy((*conf)->name, cp, cp2-cp);
-		*((*conf)->name+(cp2-cp)) = '\0';
-	}
+            if (current_tk->renewal_freq <= 0) {
+                error = "Expected time >0 for renewal-freq";
+                goto err;
+            }
+            continue;
+        }
 
-	if (!postproc_ticket(current_tk)) {
-		goto out;
-	}
+        if (strcmp(key, "acquire-after") == 0) {
+            current_tk->acquire_after = read_time(val);
 
-	poll_timeout = min(POLL_TIMEOUT, min_timeout/10);
-	if (!poll_timeout)
-		poll_timeout = POLL_TIMEOUT;
+            if (current_tk->acquire_after < 0) {
+                error = "Expected time >=0 for acquire-after";
+                goto err;
+            }
+            continue;
+        }
 
-	return 0;
+        if (strcmp(key, "before-acquire-handler") == 0) {
+            if (parse_extprog(val, current_tk)) {
+                goto err;
+            }
+            continue;
+        }
 
+        if (strcmp(key, "attr-prereq") == 0) {
+            if (parse_attr_prereq(val, current_tk)) {
+                goto err;
+            }
+            continue;
+        }
+
+        if (strcmp(key, "mode") == 0) {
+            current_tk->mode = retrieve_ticket_mode(val);
+            continue;
+        }
+
+        if (strcmp(key, "weights") == 0) {
+            if (parse_weights(val, current_tk->weight) < 0) {
+                goto err;
+            }
+            continue;
+        }
+
+        snprintf(error_str_buf, sizeof(error_str_buf), "Unknown keyword \"%s\"",
+                 key);
+        error = error_str_buf;
+        goto err;
+    }
+    fclose(fp);
+
+    if (((*conf)->site_count % 2) == 0) {
+        log_warn("Odd number of nodes is strongly recommended!");
+    }
+
+    // Default: make config name match config filename
+    if (!(*conf)->name[0]) {
+        cp = strrchr(path, '/');
+        cp = cp ? cp+1 : (char *)path;
+        cp2 = strrchr(cp, '.');
+        if (!cp2) {
+            cp2 = cp + strlen(cp);
+        }
+
+        if (cp2-cp >= BOOTH_NAME_LEN) {
+            log_error("Booth config file name too long");
+            goto out;
+        }
+
+        strncpy((*conf)->name, cp, cp2-cp);
+        *((*conf)->name+(cp2-cp)) = '\0';
+    }
+
+    if (!postproc_ticket(current_tk)) {
+        goto out;
+    }
+
+    poll_timeout = min(POLL_TIMEOUT, min_timeout/10);
+    if (poll_timeout == 0) {
+        poll_timeout = POLL_TIMEOUT;
+    }
+
+    return 0;
 
 err:
-	fclose(fp);
+    fclose(fp);
 out:
-	log_error("%s in config file line %d",
-			error, lineno);
+    log_error("%s in config file line %d", error, lineno);
 
-	free(*conf);
-	*conf = NULL;
-	return -1;
+    free(*conf);
+    *conf = NULL;
+    return -1;
 }
 
 int

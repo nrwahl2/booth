@@ -342,13 +342,14 @@ void free_booth_config(struct booth_config *conf);
  * @internal
  * Parse booth configuration file and store as structured data
  *
- * @param[in,out] conf config object to free-alloc cycle & fill accordingly
- * @param[in] path where the configuration file is expected
- * @param[in] type role currently being acted as
+ * @param[in,out] conf    Where to store booth configuration
+ * @param[in]     path    Configuration file path
+ * @param[in]     action  Type of booth run
  *
  * @return 0 or negative value (-1 or -errno) on error
  */
-int read_config(struct booth_config **conf, const char *path, int type);
+int booth__read_config(struct booth_config **conf, const char *path,
+                       action_t action);
 
 /**
  * @internal
