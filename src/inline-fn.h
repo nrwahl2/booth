@@ -83,43 +83,42 @@ is_resend(struct ticket_config *tk)
 	return time_sub_int(&now, &tk->req_sent_at) >= tk->timeout;
 }
 
-static inline void
-init_header_bare(const struct booth_config *conf, struct boothc_header *h)
-{
-	timetype now;
-
-	assert(local && local->site_id);
-	h->magic   = htonl(BOOTHC_MAGIC);
-	h->version = htonl(BOOTHC_VERSION);
-	h->from    = htonl(local->site_id);
-	h->opts    = htonl(0);
-
-	if (is_auth_req(conf)) {
-		get_time(&now);
-		h->secs  = htonl(secs_since_epoch(&now));
-		h->usecs = htonl(get_usecs(&now));
-	} else {
-		h->secs  = htonl(0);
-		h->usecs = htonl(0);
-	}
-}
-
 /* get the _real_ message length out of the header
  */
 #define sendmsglen(msg) ntohl((msg)->header.length)
 
 static inline void
-init_header(const struct booth_config *conf, struct boothc_header *h, int cmd,
-            int request, int options, int result, int reason, int data_len)
+init_header(const struct booth_config *conf, struct boothc_header *header,
+            int cmd, int request, int options, int result, int reason,
+            int data_len)
 {
-	init_header_bare(conf, h);
-	h->length  = htonl(data_len -
-		(is_auth_req(conf) ? 0 : sizeof(struct hmac)));
-	h->cmd     = htonl(cmd);
-	h->request = htonl(request);
-	h->options = htonl(options);
-	h->result  = htonl(result);
-	h->reason  = htonl(reason);
+    assert((conf != NULL) && (header != NULL) && (local != NULL)
+           && (local->site_id != 0));
+
+    header->magic = htonl(BOOTHC_MAGIC);
+    header->version = htonl(BOOTHC_VERSION);
+    header->from = htonl(local->site_id);
+    header->opts = htonl(0);
+
+    if (is_auth_req(conf)) {
+        timetype now = { 0, };
+
+        get_time(&now);
+        header->secs = htonl(secs_since_epoch(&now));
+        header->usecs = htonl(get_usecs(&now));
+        header->length = htonl(data_len);
+
+    } else {
+        header->secs = htonl(0);
+        header->usecs = htonl(0);
+        header->length = htonl(data_len - sizeof(struct hmac));
+    }
+
+    header->cmd = htonl(cmd);
+    header->request = htonl(request);
+    header->options = htonl(options);
+    header->result = htonl(result);
+    header->reason = htonl(reason);
 }
 
 #define my_last_term(tk) \
