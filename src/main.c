@@ -136,12 +136,10 @@ pollfds_index(guint index)
 }
 
 void
-booth__add_client(int fd, const struct booth_transport *transport,
-                  void (*fn)(struct booth_config *, struct client *))
+booth__add_client(int fd, void (*fn)(struct booth_config *, struct client *))
 {
     struct client client = {
         .fd = fd,
-        .transport = transport,
         .fn = fn,
     };
     struct pollfd pfd = {

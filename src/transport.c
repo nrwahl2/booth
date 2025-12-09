@@ -606,7 +606,7 @@ process_tcp_listener(struct booth_config *conf, struct client *client)
 	 *   never change the location of the clients array or otherwise render
 	 *   a client pointer invalid -- but this is hard to enforce.
 	 */
-	booth__add_client(fd, client->transport, process_connection);
+	booth__add_client(fd, process_connection);
 
 	log_debug("Added client connection for fd=%d", fd);
 }
@@ -667,7 +667,7 @@ tcp_init(void *unused __attribute__((unused)))
 		return rv;
 	}
 
-	booth__add_client(rv, &booth_transport[TCP], process_tcp_listener);
+	booth__add_client(rv, process_tcp_listener);
 	return 0;
 }
 
@@ -980,7 +980,7 @@ udp_init(void *f)
 	}
 
 	deliver_fn = f;
-	booth__add_client(local->udp_fd, &booth_transport[UDP], process_recv);
+	booth__add_client(local->udp_fd, process_recv);
 	return 0;
 }
 
