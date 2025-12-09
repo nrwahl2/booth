@@ -31,7 +31,7 @@
 #include <string.h>
 #include <netdb.h>
 
-#include <glib.h>	    // g_slist_*
+#include <glib.h>	    // g_*
 
 #include "booth.h"
 #include "config.h"
@@ -227,14 +227,6 @@ skip_while_in(const char *cp, int (*fn)(int), const char *allowed)
 		cp++;
 	/* discard "const" qualifier */
 	return (char*)cp;
-}
-
-static inline char *
-skip_while(char *cp, int (*fn)(int))
-{
-	while (fn(*cp))
-		cp++;
-	return cp;
 }
 
 static inline char *
@@ -841,7 +833,7 @@ booth__read_config(struct booth_config **conf, const char *path,
 
         lineno++;
 
-        s = skip_while(line, isspace);
+        s = g_strchug(line);
         if (is_end_of_line(s) || (*s == '#')) {
             continue;
         }
@@ -859,7 +851,7 @@ booth__read_config(struct booth_config **conf, const char *path,
         }
 
         // Whitespace, and something else but nothing more?
-        s = skip_while(end_of_key, isspace);
+        s = g_strchug(end_of_key);
 
         if (*s != '=') {
 exp_equal:
@@ -875,7 +867,7 @@ exp_equal:
 
 
         // Value tokenizing
-        s = skip_while(s, isspace);
+        g_strchug(s);
         switch (*s) {
             case '"':
             case '\'':
@@ -890,7 +882,8 @@ exp_equal:
                 // Remove and skip quote
                 *s = 0;
                 s++;
-                if (*(s = skip_while(s, isspace)) && (*s != '#')) {
+                g_strchug(s);
+                if ((*s != '\0') && (*s != '#')) {
                     error = g_strdup("Surplus data after value");
                     goto err;
                 }
