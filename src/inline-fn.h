@@ -74,15 +74,6 @@ is_owned(const struct ticket_config *tk)
 	return (tk->leader && tk->leader != no_leader);
 }
 
-static inline int
-is_resend(struct ticket_config *tk)
-{
-	timetype now;
-
-	get_time(&now);
-	return time_sub_int(&now, &tk->req_sent_at) >= tk->timeout;
-}
-
 /* get the _real_ message length out of the header
  */
 #define sendmsglen(msg) ntohl((msg)->header.length)
@@ -183,63 +174,6 @@ ticket_leader_string(const struct ticket_config *tk)
 	return site_string(tk->leader);
 }
 
-/* We allow half of the uint32_t to be used;
- * half of that below, half of that above the current known "good" value.
- *   0                                                     UINT32_MAX
- *   |--------------------------+----------------+------------|
- *                              |        |       |
- *                              |--------+-------| allowed range
- *                                       |
- *                                       current commit index
- *
- * So, on overflow it looks like that:
- *                                UINT32_MAX  0
- *   |--------------------------+-----------||---+------------|
- *                              |        |       |
- *                              |--------+-------| allowed range
- *                                       |
- *                                       current commit index
- *
- * This should be possible by using the same datatype and relying
- * on the under/overflow semantics.
- *
- *
- * Having 30 bits available, and assuming an expire time of
- * one minute and a (high) commit index step of 64 == 2^6 (because
- * of weights), we get 2^24 minutes of range - which is ~750
- * years. "Should be enough for everybody."
- */
-static inline int
-index_is_higher_than(uint32_t c_high, uint32_t c_low)
-{
-	uint32_t diff;
-
-	if (c_high == c_low)
-		return 0;
-
-	diff = c_high - c_low;
-	if (diff < UINT32_MAX/4)
-		return 1;
-
-	diff = c_low - c_high;
-	if (diff < UINT32_MAX/4)
-		return 0;
-
-	assert(!"commit index out of range - invalid");
-}
-
-static inline uint32_t
-index_max2(uint32_t a, uint32_t b)
-{
-	return index_is_higher_than(a, b) ? a : b;
-}
-
-static inline uint32_t
-index_max3(uint32_t a, uint32_t b, uint32_t c)
-{
-	return index_max2( index_max2(a, b), c);
-}
-
 /* only invoked when ticket leader */
 static inline void
 get_next_election_time(struct ticket_config *tk, timetype *next)
@@ -279,12 +213,6 @@ no_resends(struct ticket_config *tk)
 {
 	tk->retry_number = 0;
 	tk->acks_expected = 0;
-}
-
-static inline struct booth_site *
-my_vote(struct ticket_config *tk)
-{
-	return tk->votes_for[ local->index ];
 }
 
 static inline int
