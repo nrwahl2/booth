@@ -217,22 +217,11 @@ add_site(struct booth_config *conf, char *addr_string, int type)
 	return rv;
 }
 
-static inline char *
-skip_while_in(const char *cp, int (*fn)(int), const char *allowed)
-{
-	/* strchr() returns a pointer to the terminator if *cp == 0. */
-	while (*cp &&
-			(fn(*cp) ||
-			 strchr(allowed, *cp)))
-		cp++;
-	/* discard "const" qualifier */
-	return (char*)cp;
-}
-
 static int
 add_ticket(struct booth_config *conf, const char *name,
            struct ticket_config **tkp, const struct ticket_config *def)
 {
+	const char *s = NULL;
 	struct ticket_config *tk = NULL;
 
 	assert(conf != NULL);
@@ -247,7 +236,12 @@ add_ticket(struct booth_config *conf, const char *name,
 		return -EINVAL;
 	}
 
-	if (* skip_while_in(name, isalnum, "-/")) {
+	for (s = name; isalnum(*s) || (*s == '-') || (*s == '/'); s++);
+
+	if (*s != '\0') {
+		/* @TODO Should we advertise that ticket names can contain '-'
+		 * and '/', or keep that a secret?
+		 */
 		log_error("ticket name \"%s\" invalid; only alphanumeric names.", name);
 		return -EINVAL;
 	}
@@ -822,16 +816,18 @@ booth__read_config(struct booth_config **conf, const char *path,
         if ((*s == '\0') || (*s == '#')) {
             continue;
         }
+
         key = s;
 
-        // Key
-        end_of_key = skip_while_in(key, isalnum, "-_");
+        for (; isalnum(*s) || (*s == '-') || (*s == '_'); s++);
+
+        end_of_key = s;
         if (end_of_key == key) {
             error = g_strdup("No key");
             goto err;
         }
 
-        if (!*end_of_key) {
+        if (*end_of_key == '\0') {
             goto exp_equal;
         }
 
