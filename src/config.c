@@ -371,41 +371,6 @@ read_time(char *val)
 	return t;
 }
 
-/* make arguments for execv(2)
- * tk->clu_test.path points to the path
- * tk->clu_test.argv is argument vector (starts with the prog)
- * (strtok pokes holes in the configuration parameter value, i.e.
- * we don't need to allocate memory for arguments)
- */
-static int
-parse_extprog(char *val, struct ticket_config *tk)
-{
-	char *p;
-	int i = 0;
-
-	if (tk->clu_test.path) {
-		free(tk->clu_test.path);
-	}
-	if (!(tk->clu_test.path = strdup(val))) {
-		log_error("out of memory");
-		return -1;
-	}
-
-	p = strtok(tk->clu_test.path, " \t");
-	tk->clu_test.argv[i++] = p;
-	do {
-		p = strtok(NULL, " \t");
-		if (i >= MAX_ARGS) {
-			log_error("too many arguments for the acquire-handler");
-			free(tk->clu_test.path);
-			return -1;
-		}
-		tk->clu_test.argv[i++] = p;
-	} while (p);
-
-	return 0;
-}
-
 struct toktab grant_type[] = {
 	{ "auto", GRANT_AUTO},
 	{ "manual", GRANT_MANUAL},
@@ -736,8 +701,36 @@ parse_before_acquire_handler(struct booth_config *conf, char *value,
                              action_t action, struct ticket_config **ticket,
                              gchar **error)
 {
-    // @TODO Pull parse_extprog() body into here and invert return code
-    return !parse_extprog(value, *ticket);
+    /* Make arguments for execv(2).
+     * (*ticket)->clu_test.path points to the path.
+     * (*ticket)->clu_test.argv is argument vector (starts with the prog).
+     * (strtok pokes holes in the configuration parameter value, i.e.,
+     * we don't need to allocate memory for arguments).
+     */
+    char *p;
+    int i = 0;
+
+    if ((*ticket)->clu_test.path != NULL) {
+        free((*ticket)->clu_test.path);
+    }
+    if (!((*ticket)->clu_test.path = strdup(value))) {
+        log_error("out of memory");
+        return false;
+    }
+
+    p = strtok((*ticket)->clu_test.path, " \t");
+    (*ticket)->clu_test.argv[i++] = p;
+    do {
+        p = strtok(NULL, " \t");
+        if (i >= MAX_ARGS) {
+            log_error("too many arguments for the acquire-handler");
+            free((*ticket)->clu_test.path);
+            return false;
+        }
+        (*ticket)->clu_test.argv[i++] = p;
+    } while (p);
+
+    return true;
 }
 
 static bool
