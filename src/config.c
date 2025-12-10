@@ -668,55 +668,46 @@ parse_attr_prereq(struct booth_config *conf, char *value, action_t action,
                   struct ticket_config **ticket, gchar **error)
 {
     // Free using free_attr_prereq()
-    struct attr_prereq *prereq = g_new(struct attr_prereq, 1);
-    char *p = NULL;
+    struct attr_prereq *prereq = NULL;
+    gint argc = 0;
+    gchar **argv = NULL;
+    bool rc = false;
 
-    p = strtok(value, " \t");
-    if (p == NULL) {
-        log_error("not enough arguments to attr-prereq");
-        goto err_out;
+    if (!g_shell_parse_argv(value, &argc, &argv, NULL) || (argc != 4)) {
+        *error = g_strdup_printf("Failed to parse attr-prereq from \"%s\". "
+                                 "Usage: "
+                                 "attr-prereq = grant_type name op value",
+                                 value);
+        goto done;
     }
 
-    prereq->grant_type = parse_grant_type(p);
+    prereq = g_new(struct attr_prereq, 1);
+
+    prereq->grant_type = parse_grant_type(argv[0]);
     if (prereq->grant_type == 0) {
-        log_error("%s is not a grant type", p);
-        goto err_out;
+        *error = g_strdup_printf("%s is not a grant type", argv[0]);
+        goto done;
     }
 
-    p = strtok(NULL, " \t");
-    if (p == NULL) {
-        log_error("not enough arguments to attr-prereq");
-        goto err_out;
-    }
+    prereq->attr_name = g_strdup(argv[1]);
 
-    prereq->attr_name = g_strdup(p);
-
-    p = strtok(NULL, " \t");
-    if (p == NULL) {
-        log_error("not enough arguments to attr-prereq");
-        goto err_out;
-    }
-
-    prereq->op = parse_attr_op(p);
+    prereq->op = parse_attr_op(argv[2]);
     if (prereq->op == 0) {
-        log_error("%s is not an attribute operation", p);
-        goto err_out;
+        *error = g_strdup_printf("%s is not an attribute operation", argv[2]);
+        goto done;
     }
 
-    p = strtok(NULL, " \t");
-    if (p == NULL) {
-        log_error("not enough arguments to attr-prereq");
-        goto err_out;
-    }
-
-    prereq->attr_val = g_strdup(p);
+    prereq->attr_val = g_strdup(argv[3]);
 
     (*ticket)->attr_prereqs = g_list_append((*ticket)->attr_prereqs, prereq);
-    return true;
+    rc = true;
 
-err_out:
-    free_attr_prereq(prereq);
-    return false;
+done:
+    if (!rc) {
+        free_attr_prereq(prereq);
+    }
+    g_strfreev(argv);
+    return rc;
 }
 
 static bool
