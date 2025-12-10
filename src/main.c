@@ -982,7 +982,7 @@ print_usage(void)
 #define ATTR_OPTION_STRING		"c:Dt:s:h"
 
 void
-safe_copy(char *dest, char *value, size_t buflen, const char *description)
+safe_copy(char *dest, const char *value, size_t buflen, const char *description)
 {
 	int content_len = buflen - 1;
 

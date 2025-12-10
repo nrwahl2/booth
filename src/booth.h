@@ -349,7 +349,8 @@ void booth__add_client(int fd,
 void booth__remove_client(int index);
 struct client *booth__find_client(int fd);
 
-void safe_copy(char *dest, char *value, size_t buflen, const char *description);
+void safe_copy(char *dest, const char *value, size_t buflen,
+               const char *description);
 
 /**
  * @internal
