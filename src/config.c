@@ -33,6 +33,7 @@
 
 #include <glib.h>	    // g_*
 
+#include "attr.h"
 #include "booth.h"
 #include "config.h"
 #include "raft.h"
@@ -53,13 +54,29 @@ free_attr_prereq(struct attr_prereq *prereq)
     free(prereq);
 }
 
+static void
+free_ticket_config(struct ticket_config *ticket)
+{
+    if (ticket == NULL) {
+        return;
+    }
+
+    if (ticket->attr != NULL) {
+        g_hash_table_destroy(ticket->attr);
+    }
+
+    g_list_free_full(ticket->attr_prereqs, (GDestroyNotify) free_attr_prereq);
+    free(ticket);
+}
+
 void
 free_booth_config(struct booth_config *conf)
 {
-    if (conf != NULL) {
-        g_slist_free_full(conf->tickets, free);
-        free(conf);
+    if (conf == NULL) {
+        return;
     }
+    g_slist_free_full(conf->tickets, (GDestroyNotify) free_ticket_config);
+    free(conf);
 }
 
 static void
