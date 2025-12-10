@@ -391,99 +391,6 @@ read_time(char *val)
 	return t;
 }
 
-static grant_type_e
-parse_grant_type(const char *grant_type)
-{
-    if (strcmp(grant_type, "auto") == 0) {
-        return GRANT_AUTO;
-    }
-    if (strcmp(grant_type, "manual") == 0) {
-        return GRANT_MANUAL;
-    }
-    return 0;
-}
-
-static attr_op_e
-parse_attr_op(const char *attr_op)
-{
-    if (strcmp(attr_op, "eq") == 0) {
-        return ATTR_OP_EQ;
-    }
-    if (strcmp(attr_op, "ne") == 0) {
-        return ATTR_OP_NE;
-    }
-    return 0;
-}
-
-/* attribute prerequisite
- */
-static int
-do_parse_attr_prereq(char *val, struct ticket_config *tk)
-{
-	struct attr_prereq *ap = NULL;
-	char *p;
-
-	ap = (struct attr_prereq *)calloc(1, sizeof(struct attr_prereq));
-	if (!ap) {
-		log_error("out of memory");
-		return -1;
-	}
-
-	p = strtok(val, " \t");
-	if (!p) {
-		log_error("not enough arguments to attr-prereq");
-		goto err_out;
-	}
-	ap->grant_type = parse_grant_type(p);
-	if (!ap->grant_type) {
-		log_error("%s is not a grant type", p);
-		goto err_out;
-	}
-
-	p = strtok(NULL, " \t");
-	if (!p) {
-		log_error("not enough arguments to attr-prereq");
-		goto err_out;
-	}
-	if (!(ap->attr_name = strdup(p))) {
-		log_error("out of memory");
-		goto err_out;
-	}
-
-	p = strtok(NULL, " \t");
-	if (!p) {
-		log_error("not enough arguments to attr-prereq");
-		goto err_out;
-	}
-	ap->op = parse_attr_op(p);
-	if (!ap->op) {
-		log_error("%s is not an attribute operation", p);
-		goto err_out;
-	}
-
-	p = strtok(NULL, " \t");
-	if (!p) {
-		log_error("not enough arguments to attr-prereq");
-		goto err_out;
-	}
-	if (!(ap->attr_val = strdup(p))) {
-		log_error("out of memory");
-		goto err_out;
-	}
-
-	tk->attr_prereqs = g_list_append(tk->attr_prereqs, ap);
-	if (!tk->attr_prereqs) {
-		log_error("out of memory");
-		goto err_out;
-	}
-
-	return 0;
-
-err_out:
-    free_attr_prereq(ap);
-	return -1;
-}
-
 extern int poll_timeout;
 
 static bool
@@ -732,12 +639,96 @@ parse_before_acquire_handler(struct booth_config *conf, char *value,
     return true;
 }
 
+static grant_type_e
+parse_grant_type(const char *grant_type)
+{
+    if (strcmp(grant_type, "auto") == 0) {
+        return GRANT_AUTO;
+    }
+    if (strcmp(grant_type, "manual") == 0) {
+        return GRANT_MANUAL;
+    }
+    return 0;
+}
+
+static attr_op_e
+parse_attr_op(const char *attr_op)
+{
+    if (strcmp(attr_op, "eq") == 0) {
+        return ATTR_OP_EQ;
+    }
+    if (strcmp(attr_op, "ne") == 0) {
+        return ATTR_OP_NE;
+    }
+    return 0;
+}
+
 static bool
 parse_attr_prereq(struct booth_config *conf, char *value, action_t action,
                   struct ticket_config **ticket, gchar **error)
 {
-    // @TODO Pull do_parse_attr_prereq() body into here and invert return code
-    return !do_parse_attr_prereq(value, *ticket);
+    struct attr_prereq *ap = NULL;
+    char *p = NULL;
+
+    ap = (struct attr_prereq *)calloc(1, sizeof(struct attr_prereq));
+    if (ap == NULL) {
+        log_error("out of memory");
+        return false;
+    }
+
+    p = strtok(value, " \t");
+    if (p == NULL) {
+        log_error("not enough arguments to attr-prereq");
+        goto err_out;
+    }
+    ap->grant_type = parse_grant_type(p);
+    if (ap->grant_type == 0) {
+        log_error("%s is not a grant type", p);
+        goto err_out;
+    }
+
+    p = strtok(NULL, " \t");
+    if (p == NULL) {
+        log_error("not enough arguments to attr-prereq");
+        goto err_out;
+    }
+    if ((ap->attr_name = strdup(p)) == NULL) {
+        log_error("out of memory");
+        goto err_out;
+    }
+
+    p = strtok(NULL, " \t");
+    if (p == NULL) {
+        log_error("not enough arguments to attr-prereq");
+        goto err_out;
+    }
+    ap->op = parse_attr_op(p);
+    if (ap->op == 0) {
+        log_error("%s is not an attribute operation", p);
+        goto err_out;
+    }
+
+    p = strtok(NULL, " \t");
+    if (p == NULL) {
+        log_error("not enough arguments to attr-prereq");
+        goto err_out;
+    }
+    if ((ap->attr_val = strdup(p)) == NULL) {
+        log_error("out of memory");
+        goto err_out;
+    }
+
+    (*ticket)->attr_prereqs = g_list_append((*ticket)->attr_prereqs, ap);
+    if ((*ticket)->attr_prereqs == NULL) {
+        log_error("out of memory");
+        goto err_out;
+    }
+
+    return true;
+
+err_out:
+    free_attr_prereq(ap);
+    return false;
 }
 
 static bool
