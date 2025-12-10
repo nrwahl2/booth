@@ -707,28 +707,32 @@ parse_before_acquire_handler(struct booth_config *conf, char *value,
      * (strtok pokes holes in the configuration parameter value, i.e.,
      * we don't need to allocate memory for arguments).
      */
-    char *p;
+    char *p = NULL;
     int i = 0;
 
     if ((*ticket)->clu_test.path != NULL) {
         free((*ticket)->clu_test.path);
     }
-    if (!((*ticket)->clu_test.path = strdup(value))) {
-        log_error("out of memory");
+
+    (*ticket)->clu_test.path = strdup(value);
+    if ((*ticket)->clu_test.path == NULL) {
+        log_error("Failed to set before-acquire-handler: %s", strerror(errno));
         return false;
     }
 
     p = strtok((*ticket)->clu_test.path, " \t");
     (*ticket)->clu_test.argv[i++] = p;
+
     do {
         p = strtok(NULL, " \t");
         if (i >= MAX_ARGS) {
-            log_error("too many arguments for the acquire-handler");
+            log_error("Failed to set before-acquire-handler: Too many "
+                      "arguments");
             free((*ticket)->clu_test.path);
             return false;
         }
         (*ticket)->clu_test.argv[i++] = p;
-    } while (p);
+    } while (p != NULL);
 
     return true;
 }
