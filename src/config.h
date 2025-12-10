@@ -47,7 +47,6 @@ struct booth_config;
 /** Definitions for in-RAM data. */
 
 #define MAX_NODES	16
-#define MAX_ARGS 	16
 
 #define OTHER_SITE "other"
 
@@ -114,9 +113,9 @@ struct ticket_config {
 	/* Program to ask whether it makes sense to
 	 * acquire the ticket */
 	struct clu_test {
-		char *path;
+		gchar *path;
+		gchar **argv;
 		bool is_dir;
-		char *argv[MAX_ARGS];
 		pid_t pid;
 		int status; /* child exit status */
 		extprog_state_e progstate; /* program running/idle/waited on */

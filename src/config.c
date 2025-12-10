@@ -61,6 +61,9 @@ free_ticket_config(struct ticket_config *ticket)
         return;
     }
 
+    g_free(ticket->clu_test.path);
+    g_strfreev(ticket->clu_test.argv);
+
     if (ticket->attr != NULL) {
         g_hash_table_destroy(ticket->attr);
     }
@@ -723,39 +726,20 @@ parse_before_acquire_handler(struct booth_config *conf, char *value,
                              action_t action, struct ticket_config **ticket,
                              gchar **error)
 {
-    /* Make arguments for execv(2).
-     * (*ticket)->clu_test.path points to the path.
-     * (*ticket)->clu_test.argv is argument vector (starts with the prog).
-     * (strtok pokes holes in the configuration parameter value, i.e.,
-     * we don't need to allocate memory for arguments).
-     */
-    char *p = NULL;
-    int i = 0;
+    // Make arguments for execv()
 
-    if ((*ticket)->clu_test.path != NULL) {
-        free((*ticket)->clu_test.path);
-    }
+    g_clear_pointer(&(*ticket)->clu_test.path, g_free);
+    g_clear_pointer(&(*ticket)->clu_test.argv, g_strfreev);
 
-    (*ticket)->clu_test.path = strdup(value);
-    if ((*ticket)->clu_test.path == NULL) {
-        log_error("Failed to set before-acquire-handler: %s", strerror(errno));
+    // The caller ensured value is non-empty
+    if (!g_shell_parse_argv(value, NULL, &(*ticket)->clu_test.argv, NULL)) {
+        *error = g_strdup_printf("Failed to set before-acquire-handler: "
+                                 "couldn't parse \"%s\" as command line or "
+                                 "directory", value);
         return false;
     }
 
-    p = strtok((*ticket)->clu_test.path, " \t");
-    (*ticket)->clu_test.argv[i++] = p;
-
-    do {
-        p = strtok(NULL, " \t");
-        if (i >= MAX_ARGS) {
-            log_error("Failed to set before-acquire-handler: Too many "
-                      "arguments");
-            free((*ticket)->clu_test.path);
-            return false;
-        }
-        (*ticket)->clu_test.argv[i++] = p;
-    } while (p != NULL);
-
+    (*ticket)->clu_test.path = g_strdup((*ticket)->clu_test.argv[0]);
     return true;
 }
 
