@@ -282,10 +282,10 @@ struct booth_config {
     /** Stores the OR of all members' bitmasks. */
     uint64_t all_bits;
 
-    char site_user[BOOTH_NAME_LEN];
-    char site_group[BOOTH_NAME_LEN];
-    char arb_user[BOOTH_NAME_LEN];
-    char arb_group[BOOTH_NAME_LEN];
+    gchar *site_user;
+    gchar *site_group;
+    gchar *arb_user;
+    gchar *arb_group;
     uid_t uid;
     gid_t gid;
 

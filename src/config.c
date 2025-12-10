@@ -78,6 +78,10 @@ free_booth_config(struct booth_config *conf)
     if (conf == NULL) {
         return;
     }
+    g_free(conf->site_user);
+    g_free(conf->site_group);
+    g_free(conf->arb_user);
+    g_free(conf->arb_group);
     g_slist_free_full(conf->tickets, (GDestroyNotify) free_ticket_config);
     free(conf);
 }
@@ -409,7 +413,8 @@ static bool
 parse_site_user(struct booth_config *conf, const char *value,
                 struct ticket_config **ticket, gchar **error)
 {
-    safe_copy(conf->site_user, value, BOOTH_NAME_LEN, "site-user");
+    g_free(conf->site_user);
+    conf->site_user = g_strdup(value);
     return true;
 }
 
@@ -417,7 +422,8 @@ static bool
 parse_site_group(struct booth_config *conf, const char *value,
                  struct ticket_config **ticket, gchar **error)
 {
-    safe_copy(conf->site_group, value, BOOTH_NAME_LEN, "site-group");
+    g_free(conf->site_group);
+    conf->site_group = g_strdup(value);
     return true;
 }
 
@@ -425,7 +431,8 @@ static bool
 parse_arbitrator_user(struct booth_config *conf, const char *value,
                       struct ticket_config **ticket, gchar **error)
 {
-    safe_copy(conf->arb_user, value, BOOTH_NAME_LEN, "arbitrator-user");
+    g_free(conf->arb_user);
+    conf->arb_user = g_strdup(value);
     return true;
 }
 
@@ -433,7 +440,8 @@ static bool
 parse_arbitrator_group(struct booth_config *conf, const char *value,
                        struct ticket_config **ticket, gchar **error)
 {
-    safe_copy(conf->arb_group, value, BOOTH_NAME_LEN, "arbitrator-group");
+    g_free(conf->arb_group);
+    conf->arb_group = g_strdup(value);
     return true;
 }
 
@@ -723,10 +731,10 @@ booth__read_config(struct booth_config **conf, const char *path)
     // Provide safe defaults. -1 is reserved, though.
     (*conf)->uid = -2;
     (*conf)->gid = -2;
-    strcpy((*conf)->site_user,  "hacluster");
-    strcpy((*conf)->site_group, "haclient");
-    strcpy((*conf)->arb_user,   "nobody");
-    strcpy((*conf)->arb_group,  "nobody");
+    (*conf)->site_user = g_strdup("hacluster");
+    (*conf)->site_group = g_strdup("haclient");
+    (*conf)->arb_user = g_strdup("nobody");
+    (*conf)->arb_group = g_strdup("nobody");
 
     log_debug("reading config file %s", path);
     while (fgets(line, sizeof(line), fp)) {
