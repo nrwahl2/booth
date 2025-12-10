@@ -44,11 +44,9 @@ struct parser_context {
     const char *key;
     const char *value;
     struct ticket_config *ticket;
+    int min_timeout;
     gchar *error;
 };
-
-// @TODO Make this no longer file-scope
-static int min_timeout = 0;
 
 static void
 free_attr_prereq(struct attr_prereq *prereq)
@@ -515,10 +513,12 @@ parse_timeout(struct booth_config *conf, struct parser_context *context)
         return false;
     }
 
-    if (min_timeout == 0) {
-        min_timeout = context->ticket->timeout;
+    if (context->min_timeout == 0) {
+        context->min_timeout = context->ticket->timeout;
+
     } else {
-        min_timeout = min(min_timeout, context->ticket->timeout);
+        context->min_timeout = min(context->min_timeout,
+                                   context->ticket->timeout);
     }
 
     return true;
@@ -1022,7 +1022,7 @@ booth__read_config(struct booth_config **conf, const char *path)
         goto out;
     }
 
-    poll_timeout = min(POLL_TIMEOUT, min_timeout/10);
+    poll_timeout = min(POLL_TIMEOUT, context.min_timeout / 10);
     if (poll_timeout == 0) {
         poll_timeout = POLL_TIMEOUT;
     }
