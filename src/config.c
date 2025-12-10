@@ -363,213 +363,6 @@ read_time(const char *val)
 extern int poll_timeout;
 
 static bool
-parse_transport(struct booth_config *conf, struct parser_context *context)
-{
-    if (strcasecmp(context->value, "UDP") != 0) {
-        context->error = g_strdup_printf("Invalid transport protocol \"%s\"",
-                                         context->value);
-        return false;
-    }
-
-    return true;
-}
-
-static bool
-parse_port(struct booth_config *conf, struct parser_context *context)
-{
-    // @FIXME Use strtol() and error-check
-    conf->port = atoi(context->value);
-    return true;
-}
-
-static bool
-parse_name(struct booth_config *conf, struct parser_context *context)
-{
-    safe_copy(conf->name, context->value, BOOTH_NAME_LEN, context->key);
-    return true;
-}
-
-#if (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
-static bool
-parse_authfile(struct booth_config *conf, struct parser_context *context)
-{
-    safe_copy(conf->authfile, context->value, BOOTH_PATH_LEN, context->key);
-    return true;
-}
-
-static bool
-parse_maxtimeskew(struct booth_config *conf, struct parser_context *context)
-{
-    // @FIXME Use strtol() and error-check
-    conf->maxtimeskew = atoi(context->value);
-    return true;
-}
-#endif  // (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
-
-static bool
-parse_site(struct booth_config *conf, struct parser_context *context)
-{
-    return add_site(conf, context->value, SITE);
-}
-
-static bool
-parse_arbitrator(struct booth_config *conf, struct parser_context *context)
-{
-    return add_site(conf, context->value, ARBITRATOR);
-}
-
-static bool
-parse_site_user(struct booth_config *conf, struct parser_context *context)
-{
-    g_free(conf->site_user);
-    conf->site_user = g_strdup(context->value);
-    return true;
-}
-
-static bool
-parse_site_group(struct booth_config *conf, struct parser_context *context)
-{
-    g_free(conf->site_group);
-    conf->site_group = g_strdup(context->value);
-    return true;
-}
-
-static bool
-parse_arbitrator_user(struct booth_config *conf, struct parser_context *context)
-{
-    g_free(conf->arb_user);
-    conf->arb_user = g_strdup(context->value);
-    return true;
-}
-
-static bool
-parse_arbitrator_group(struct booth_config *conf,
-                       struct parser_context *context)
-{
-    g_free(conf->arb_group);
-    conf->arb_group = g_strdup(context->value);
-    return true;
-}
-
-static bool
-parse_debug(struct booth_config *conf, struct parser_context *context)
-{
-    if ((cl.type != CLIENT) && (cl.type != GEOSTORE)) {
-        // @FIXME Use strtol() and error-check
-        debug_level = max(debug_level, atoi(context->value));
-    }
-
-    return true;
-}
-
-static bool
-parse_ticket(struct booth_config *conf, struct parser_context *context)
-{
-    static struct ticket_config defaults = {
-        .clu_test = {
-            .path = NULL,
-            .pid = 0,
-            .status = 0,
-            .progstate = EXTPROG_IDLE,
-        },
-        .term_duration = DEFAULT_TICKET_EXPIRY,
-        .timeout = DEFAULT_TICKET_TIMEOUT,
-        .retries = DEFAULT_RETRIES,
-        .acquire_after = 0,
-        .mode = TICKET_MODE_AUTO,
-    };
-
-    if ((context->ticket != NULL)
-        && (strcmp(context->ticket->name, "__defaults__") != 0)
-        && !postproc_ticket(context->ticket)) {
-
-        return false;
-    }
-
-    if (strcmp(context->value, "__defaults__") == 0) {
-        context->ticket = &defaults;
-        return true;
-    }
-
-    if (add_ticket(conf, context->value, &context->ticket, &defaults)) {
-        return false;
-    }
-
-    return true;
-}
-
-static bool
-parse_expire(struct booth_config *conf, struct parser_context *context)
-{
-    context->ticket->term_duration = read_time(context->value);
-
-    if (context->ticket->term_duration <= 0) {
-        context->error = g_strdup_printf("Expected time > 0 for %s",
-                                         context->key);
-        return false;
-    }
-
-    return true;
-}
-
-static bool
-parse_timeout(struct booth_config *conf, struct parser_context *context)
-{
-    context->ticket->timeout = read_time(context->value);
-
-    if (context->ticket->timeout <= 0) {
-        context->error = g_strdup_printf("Expected time > 0 for %s",
-                                         context->key);
-        return false;
-    }
-
-    if (context->min_timeout == 0) {
-        context->min_timeout = context->ticket->timeout;
-
-    } else {
-        context->min_timeout = min(context->min_timeout,
-                                   context->ticket->timeout);
-    }
-
-    return true;
-}
-
-static bool
-parse_retries(struct booth_config *conf, struct parser_context *context)
-{
-    char *end = NULL;
-
-    errno = 0;
-    context->ticket->retries = strtol(context->value, &end, 0);
-
-    if ((errno != 0)
-        || (*end != '\0') || (end == context->value)
-        || (context->ticket->retries < 3) || (context->ticket->retries > 100)) {
-
-        context->error = g_strdup_printf("Expected plain integer value in the "
-                                         "range [3, 1000] for %s",
-                                         context->key);
-        return false;
-    }
-
-    return true;
-}
-
-static bool
-parse_renewal_freq(struct booth_config *conf, struct parser_context *context)
-{
-    context->ticket->renewal_freq = read_time(context->value);
-
-    if (context->ticket->renewal_freq <= 0) {
-        context->error = g_strdup_printf("Expected time > 0 for %s",
-                                         context->key);
-        return false;
-    }
-
-    return true;
-}
-
-static bool
 parse_acquire_after(struct booth_config *conf, struct parser_context *context)
 {
     context->ticket->acquire_after = read_time(context->value);
@@ -584,25 +377,25 @@ parse_acquire_after(struct booth_config *conf, struct parser_context *context)
 }
 
 static bool
-parse_before_acquire_handler(struct booth_config *conf,
-                             struct parser_context *context)
+parse_arbitrator(struct booth_config *conf, struct parser_context *context)
 {
-    // Make arguments for execv()
+    return add_site(conf, context->value, ARBITRATOR);
+}
 
-    g_clear_pointer(&context->ticket->clu_test.path, g_free);
-    g_clear_pointer(&context->ticket->clu_test.argv, g_strfreev);
+static bool
+parse_arbitrator_group(struct booth_config *conf,
+                       struct parser_context *context)
+{
+    g_free(conf->arb_group);
+    conf->arb_group = g_strdup(context->value);
+    return true;
+}
 
-    // The caller ensured context->value is non-empty
-    if (!g_shell_parse_argv(context->value, NULL,
-                            &context->ticket->clu_test.argv, NULL)) {
-        context->error = g_strdup_printf("Failed to set %s: couldn't parse "
-                                         "\"%s\" as command line or directory",
-                                         context->key, context->value);
-        return false;
-    }
-
-    context->ticket->clu_test.path =
-        g_strdup(context->ticket->clu_test.argv[0]);
+static bool
+parse_arbitrator_user(struct booth_config *conf, struct parser_context *context)
+{
+    g_free(conf->arb_user);
+    conf->arb_user = g_strdup(context->value);
     return true;
 }
 
@@ -680,6 +473,54 @@ done:
 }
 
 static bool
+parse_before_acquire_handler(struct booth_config *conf,
+                             struct parser_context *context)
+{
+    // Make arguments for execv()
+
+    g_clear_pointer(&context->ticket->clu_test.path, g_free);
+    g_clear_pointer(&context->ticket->clu_test.argv, g_strfreev);
+
+    // The caller ensured context->value is non-empty
+    if (!g_shell_parse_argv(context->value, NULL,
+                            &context->ticket->clu_test.argv, NULL)) {
+        context->error = g_strdup_printf("Failed to set %s: couldn't parse "
+                                         "\"%s\" as command line or directory",
+                                         context->key, context->value);
+        return false;
+    }
+
+    context->ticket->clu_test.path =
+        g_strdup(context->ticket->clu_test.argv[0]);
+    return true;
+}
+
+static bool
+parse_debug(struct booth_config *conf, struct parser_context *context)
+{
+    if ((cl.type != CLIENT) && (cl.type != GEOSTORE)) {
+        // @FIXME Use strtol() and error-check
+        debug_level = max(debug_level, atoi(context->value));
+    }
+
+    return true;
+}
+
+static bool
+parse_expire(struct booth_config *conf, struct parser_context *context)
+{
+    context->ticket->term_duration = read_time(context->value);
+
+    if (context->ticket->term_duration <= 0) {
+        context->error = g_strdup_printf("Expected time > 0 for %s",
+                                         context->key);
+        return false;
+    }
+
+    return true;
+}
+
+static bool
 parse_mode(struct booth_config *conf, struct parser_context *context)
 {
     if (strcasecmp(context->value, "manual") == 0) {
@@ -696,11 +537,170 @@ parse_mode(struct booth_config *conf, struct parser_context *context)
 }
 
 static bool
+parse_name(struct booth_config *conf, struct parser_context *context)
+{
+    safe_copy(conf->name, context->value, BOOTH_NAME_LEN, context->key);
+    return true;
+}
+
+static bool
+parse_port(struct booth_config *conf, struct parser_context *context)
+{
+    // @FIXME Use strtol() and error-check
+    conf->port = atoi(context->value);
+    return true;
+}
+
+static bool
+parse_renewal_freq(struct booth_config *conf, struct parser_context *context)
+{
+    context->ticket->renewal_freq = read_time(context->value);
+
+    if (context->ticket->renewal_freq <= 0) {
+        context->error = g_strdup_printf("Expected time > 0 for %s",
+                                         context->key);
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+parse_retries(struct booth_config *conf, struct parser_context *context)
+{
+    char *end = NULL;
+
+    errno = 0;
+    context->ticket->retries = strtol(context->value, &end, 0);
+
+    if ((errno != 0)
+        || (*end != '\0') || (end == context->value)
+        || (context->ticket->retries < 3) || (context->ticket->retries > 100)) {
+
+        context->error = g_strdup_printf("Expected plain integer value in the "
+                                         "range [3, 1000] for %s",
+                                         context->key);
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+parse_site(struct booth_config *conf, struct parser_context *context)
+{
+    return add_site(conf, context->value, SITE);
+}
+
+static bool
+parse_site_group(struct booth_config *conf, struct parser_context *context)
+{
+    g_free(conf->site_group);
+    conf->site_group = g_strdup(context->value);
+    return true;
+}
+
+static bool
+parse_site_user(struct booth_config *conf, struct parser_context *context)
+{
+    g_free(conf->site_user);
+    conf->site_user = g_strdup(context->value);
+    return true;
+}
+
+static bool
+parse_ticket(struct booth_config *conf, struct parser_context *context)
+{
+    static struct ticket_config defaults = {
+        .clu_test = {
+            .path = NULL,
+            .pid = 0,
+            .status = 0,
+            .progstate = EXTPROG_IDLE,
+        },
+        .term_duration = DEFAULT_TICKET_EXPIRY,
+        .timeout = DEFAULT_TICKET_TIMEOUT,
+        .retries = DEFAULT_RETRIES,
+        .acquire_after = 0,
+        .mode = TICKET_MODE_AUTO,
+    };
+
+    if ((context->ticket != NULL)
+        && (strcmp(context->ticket->name, "__defaults__") != 0)
+        && !postproc_ticket(context->ticket)) {
+
+        return false;
+    }
+
+    if (strcmp(context->value, "__defaults__") == 0) {
+        context->ticket = &defaults;
+        return true;
+    }
+
+    if (add_ticket(conf, context->value, &context->ticket, &defaults)) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+parse_timeout(struct booth_config *conf, struct parser_context *context)
+{
+    context->ticket->timeout = read_time(context->value);
+
+    if (context->ticket->timeout <= 0) {
+        context->error = g_strdup_printf("Expected time > 0 for %s",
+                                         context->key);
+        return false;
+    }
+
+    if (context->min_timeout == 0) {
+        context->min_timeout = context->ticket->timeout;
+
+    } else {
+        context->min_timeout = min(context->min_timeout,
+                                   context->ticket->timeout);
+    }
+
+    return true;
+}
+
+static bool
 parse_weights(struct booth_config *conf, struct parser_context *context)
 {
     /* @COMPAT We need to treat a weights parameter as valid. However, it
      * doesn't do anything. Remove support in a future release.
      */
+    return true;
+}
+
+#if (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
+static bool
+parse_authfile(struct booth_config *conf, struct parser_context *context)
+{
+    safe_copy(conf->authfile, context->value, BOOTH_PATH_LEN, context->key);
+    return true;
+}
+
+static bool
+parse_maxtimeskew(struct booth_config *conf, struct parser_context *context)
+{
+    // @FIXME Use strtol() and error-check
+    conf->maxtimeskew = atoi(context->value);
+    return true;
+}
+#endif  // (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
+
+static bool
+parse_transport(struct booth_config *conf, struct parser_context *context)
+{
+    if (strcasecmp(context->value, "UDP") != 0) {
+        context->error = g_strdup_printf("Invalid transport protocol \"%s\"",
+                                         context->value);
+        return false;
+    }
+
     return true;
 }
 
