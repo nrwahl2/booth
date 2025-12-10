@@ -785,6 +785,7 @@ booth__read_config(struct booth_config **conf, const char *path)
     (*conf)->site_group = g_strdup("haclient");
     (*conf)->arb_user = g_strdup("nobody");
     (*conf)->arb_group = g_strdup("nobody");
+    (*conf)->poll_timeout = 100;
 
     log_debug("reading config file %s", path);
     while (fgets(line, sizeof(line), fp)) {
@@ -925,9 +926,12 @@ booth__read_config(struct booth_config **conf, const char *path)
         goto out;
     }
 
-    (*conf)->poll_timeout = min(100, context.min_timeout / 10);
-    if ((*conf)->poll_timeout == 0) {
-        (*conf)->poll_timeout = 100;
+    if (context.min_timeout >= 10) {
+        (*conf)->poll_timeout = min((*conf)->poll_timeout,
+                                    context.min_timeout / 10);
+
+    } else if (context.min_timeout > 0) {
+        (*conf)->poll_timeout = 1;
     }
 
     return 0;
