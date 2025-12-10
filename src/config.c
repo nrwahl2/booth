@@ -286,7 +286,6 @@ add_ticket(struct booth_config *conf, const char *name,
 	tk->timeout = def->timeout;
 	tk->term_duration = def->term_duration;
 	tk->retries = def->retries;
-	memcpy(tk->weight, def->weight, sizeof(tk->weight));
 	tk->mode = def->mode;
 
 	conf->tickets = g_slist_append(conf->tickets, tk);
@@ -688,49 +687,9 @@ static bool
 parse_weights(struct booth_config *conf, const char *value, action_t action,
               struct ticket_config **ticket, gchar **error)
 {
-    for (int i = 0; i < MAX_NODES; i++) {
-        char *end = NULL;
-        long weight = 0;
-
-        if (*value == '\0') {
-            break;
-        }
-
-        errno = 0;
-        weight = strtol(value, &end, 10);
-
-        if ((errno != 0) || (end == value)
-            || (weight < INT_MIN) || (weight > INT_MAX)) {
-
-            log_error("No integer weight value at \"%s\"", value);
-            return false;
-        }
-
-        (*ticket)->weight[i] = weight;
-        value = end;
-
-        while (*value != '\0') {
-            if (isspace(*value) || (strchr(",;:-+", *value) != NULL)) {
-                /* Skip separator characters.
-                 *
-                 * @COMPAT Remove support for ';' and ':' as delimiters. The man
-                 * page describes the weights parameter as a comma-separated
-                 * list of integers.
-                 */
-                value++;
-
-            } else if (isdigit(*value)) {
-                // Next weight
-                break;
-
-            } else {
-                log_error("Invalid character at \"%s\"", value);
-                return false;
-            }
-        }
-    }
-
-    // Other weights were initialized to zero by calloc()
+    /* @COMPAT We need to treat a weights parameter as valid. However, it
+     * doesn't do anything. Remove support in a future release.
+     */
     return true;
 }
 

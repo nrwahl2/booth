@@ -20,4 +20,3 @@ site="147.18.2.1"
 ticket="ticketA"
 ticket="ticketB"
 	expire = 600
-	weights = 1,2,3

@@ -317,11 +317,16 @@ the total retry time must be shorter than the renewal time
 	timeout*(retries+1) < renewal
 
 'weights'::
-	A comma-separated list of integers that define the weight of individual 
-	Raft members, in the same order as the 'site' and 'arbitrator' lines.
+	(Deprecated) A comma-separated list of integers that define the weight of
+	individual Raft members, in the same order as the 'site' and 'arbitrator'
+	lines.
 +
 Default is '0' for all; this means that the order in the configuration 
 file defines priority for conflicting requests.
++
+This option is deprecated and will be removed in a future release. It is not
+implemented (that is, a weights value does not affect behavior), and there are
+no plans to implement it.
 
 'before-acquire-handler'::
 	If set, this parameter specifies either a file containing a

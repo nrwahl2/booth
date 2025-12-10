@@ -301,8 +301,7 @@ struct booth_site {
 	int tcp_fd;
 	int udp_fd;
 
-	/* 0-based, used for indexing into per-ticket weights.
-	 * -1 for no_leader. */
+	// 0-based indexing for "real" sites (-1 for no_leader)
 	int index;
 	uint64_t bitmask;
 

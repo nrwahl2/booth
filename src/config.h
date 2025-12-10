@@ -116,9 +116,6 @@ struct ticket_config {
 		extprog_state_e progstate; /* program running/idle/waited on */
 	} clu_test;
 
-	/** Node weights. */
-	int weight[MAX_NODES];
-
 	/* Mode operation of the ticket.
 	 * Set to MANUAL to make sure that the ticket will be manipulated
 	 * only by manual commands of the administrator. In such a case
