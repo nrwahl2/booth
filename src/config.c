@@ -41,6 +41,7 @@
 #include "log.h"
 
 struct parser_context {
+    const char *key;
     const char *value;
     struct ticket_config *ticket;
     gchar *error;
@@ -378,14 +379,14 @@ parse_port(struct booth_config *conf, struct parser_context *context)
 static bool
 parse_name(struct booth_config *conf, struct parser_context *context)
 {
-    safe_copy(conf->name, context->value, BOOTH_NAME_LEN, "name");
+    safe_copy(conf->name, context->value, BOOTH_NAME_LEN, context->key);
     return true;
 }
 
 static bool
 parse_authfile(struct booth_config *conf, struct parser_context *context)
 {
-    safe_copy(conf->authfile, context->value, BOOTH_PATH_LEN, "authfile");
+    safe_copy(conf->authfile, context->value, BOOTH_PATH_LEN, context->key);
     return true;
 }
 
@@ -495,7 +496,8 @@ parse_expire(struct booth_config *conf, struct parser_context *context)
     context->ticket->term_duration = read_time(context->value);
 
     if (context->ticket->term_duration <= 0) {
-        context->error = g_strdup("Expected time > 0 for expire");
+        context->error = g_strdup_printf("Expected time > 0 for %s",
+                                         context->key);
         return false;
     }
 
@@ -508,7 +510,8 @@ parse_timeout(struct booth_config *conf, struct parser_context *context)
     context->ticket->timeout = read_time(context->value);
 
     if (context->ticket->timeout <= 0) {
-        context->error = g_strdup("Expected time > 0 for timeout");
+        context->error = g_strdup_printf("Expected time > 0 for %s",
+                                         context->key);
         return false;
     }
 
@@ -533,8 +536,9 @@ parse_retries(struct booth_config *conf, struct parser_context *context)
         || (*end != '\0') || (end == context->value)
         || (context->ticket->retries < 3) || (context->ticket->retries > 100)) {
 
-        context->error = g_strdup("Expected plain integer value in the range "
-                                  "[3, 1000] for retries");
+        context->error = g_strdup_printf("Expected plain integer value in the "
+                                         "range [3, 1000] for %s",
+                                         context->key);
         return false;
     }
 
@@ -547,7 +551,8 @@ parse_renewal_freq(struct booth_config *conf, struct parser_context *context)
     context->ticket->renewal_freq = read_time(context->value);
 
     if (context->ticket->renewal_freq <= 0) {
-        context->error = g_strdup("Expected time > 0 for renewal-freq");
+        context->error = g_strdup_printf("Expected time > 0 for %s",
+                                         context->key);
         return false;
     }
 
@@ -560,7 +565,8 @@ parse_acquire_after(struct booth_config *conf, struct parser_context *context)
     context->ticket->acquire_after = read_time(context->value);
 
     if (context->ticket->acquire_after < 0) {
-        context->error = g_strdup("Expected time >= 0 for acquire-after");
+        context->error = g_strdup_printf("Expected time >= 0 for %s",
+                                         context->key);
         return false;
     }
 
@@ -579,9 +585,9 @@ parse_before_acquire_handler(struct booth_config *conf,
     // The caller ensured context->value is non-empty
     if (!g_shell_parse_argv(context->value, NULL,
                             &context->ticket->clu_test.argv, NULL)) {
-        context->error = g_strdup_printf("Failed to set before-acquire-handler: "
-                                 "couldn't parse \"%s\" as command line or "
-                                 "directory", context->value);
+        context->error = g_strdup_printf("Failed to set %s: couldn't parse "
+                                         "\"%s\" as command line or directory",
+                                         context->key, context->value);
         return false;
     }
 
@@ -626,10 +632,10 @@ parse_attr_prereq(struct booth_config *conf, struct parser_context *context)
     if (!g_shell_parse_argv(context->value, &argc, &argv, NULL)
         || (argc != 4)) {
 
-        context->error = g_strdup_printf("Failed to parse attr-prereq from \"%s\". "
-                                 "Usage: "
-                                 "attr-prereq = grant_type name op value",
-                                 context->value);
+        context->error = g_strdup_printf("Failed to parse %s from \"%s\". "
+                                         "Usage: %s = grant_type name op value",
+                                         context->key, context->value,
+                                         context->key);
         goto done;
     }
 
@@ -814,6 +820,7 @@ booth__read_config(struct booth_config **conf, const char *path)
             goto err;
         }
 
+        context.key = key;
         context.value = val;
 
         // @COMPAT Deprecated since 1.3
