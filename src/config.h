@@ -303,12 +303,10 @@ void free_booth_config(struct booth_config *conf);
  *
  * @param[in,out] conf    Where to store booth configuration
  * @param[in]     path    Configuration file path
- * @param[in]     action  Type of booth run
  *
  * @return 0 or negative value (-1 or -errno) on error
  */
-int booth__read_config(struct booth_config **conf, const char *path,
-                       action_t action);
+int booth__read_config(struct booth_config **conf, const char *path);
 
 /**
  * @internal
