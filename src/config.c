@@ -736,7 +736,6 @@ booth__read_config(struct booth_config **conf, const char *path,
 
     log_debug("reading config file %s", path);
     while (fgets(line, sizeof(line), fp)) {
-        int i = 0;
         char *s = NULL;
         const char *key = NULL;
         const char *val = NULL;
@@ -744,7 +743,7 @@ booth__read_config(struct booth_config **conf, const char *path,
 
         lineno++;
 
-        s = g_strchug(line);
+        s = g_strchomp(line);
         if ((*s == '\0') || (*s == '#')) {
             continue;
         }
@@ -778,7 +777,6 @@ exp_equal:
          */
         *end_of_key = 0;
 
-
         // Value tokenizing
         g_strchug(s);
         switch (*s) {
@@ -808,24 +806,15 @@ exp_equal:
 no_value:
                 error = g_strdup("No value");
                 goto err;
-                break;
 
             default:
                 val = s;
-                // Rest of line
-                i = strlen(s);
-
-                // i > 0 because of "case 0" above
-                while ((i > 0) && isspace(s[i-1])) {
-                    i--;
-                }
-                s += i;
-                *s = 0;
+                break;
         }
 
-        if (val == s)
+        if (*val == '\0') {
             goto no_value;
-
+        }
 
         if ((strlen(key) > BOOTH_NAME_LEN) || (strlen(val) > BOOTH_NAME_LEN)) {
             error = g_strdup("key/value too long");
