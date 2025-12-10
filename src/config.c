@@ -44,7 +44,6 @@ struct parser_context {
     const char *key;
     const char *value;
     struct ticket_config *ticket;
-    int min_timeout;
     gchar *error;
 };
 
@@ -653,12 +652,16 @@ parse_timeout(struct booth_config *conf, struct parser_context *context)
         return false;
     }
 
-    if (context->min_timeout == 0) {
-        context->min_timeout = context->ticket->timeout;
-
+    /* @TODO Why do we divide ticket timeout by 10 to set the poll timeout?
+     * Also, should we let this go to 0 (so that poll() returns immediately)
+     * when the ticket timeout is less than 10, instead of setting a floor at 1?
+     * It doesn't seem as if it would make any difference compared to 1 ms.
+     */
+    if (context->ticket->timeout >= 10) {
+        conf->poll_timeout = min(conf->poll_timeout,
+                                 context->ticket->timeout / 10);
     } else {
-        context->min_timeout = min(context->min_timeout,
-                                   context->ticket->timeout);
+        conf->poll_timeout = 1;
     }
 
     return true;
@@ -924,14 +927,6 @@ booth__read_config(struct booth_config **conf, const char *path)
 
     if (!postproc_ticket(context.ticket)) {
         goto out;
-    }
-
-    if (context.min_timeout >= 10) {
-        (*conf)->poll_timeout = min((*conf)->poll_timeout,
-                                    context.min_timeout / 10);
-
-    } else if (context.min_timeout > 0) {
-        (*conf)->poll_timeout = 1;
     }
 
     return 0;
