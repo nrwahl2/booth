@@ -58,4 +58,6 @@ int process_attr_request(struct booth_config *conf, struct client *req_client,
 
 int store_geo_attr(struct ticket_config *tk, const char *name, const char *val, int notime);
 
+void booth__free_geo_attr(struct geo_attr *attr);
+
 #endif /* _ATTR_H */

@@ -236,24 +236,20 @@ out_close:
  */
 #define gbool2rlt(i) (i ? RLT_SUCCESS : RLT_SYNC_FAIL)
 
-static void
-free_geo_attr(gpointer data)
+void
+booth__free_geo_attr(struct geo_attr *attr)
 {
-	struct geo_attr *a = (struct geo_attr *)data;
-
-	if (!a)
-		return;
-	g_free(a->val);
-	g_free(a);
+    if (attr == NULL) {
+        return;
+    }
+    g_free(attr->val);
+    g_free(attr);
 }
 
 int
 store_geo_attr(struct ticket_config *tk, const char *name, const char *val,
                int notime)
 {
-	struct geo_attr *a;
-	GDestroyNotify free_geo_attr_notify = free_geo_attr;
-
 	if (!tk)
 		return -1;
 	/*
@@ -263,7 +259,7 @@ store_geo_attr(struct ticket_config *tk, const char *name, const char *val,
 	 */
 	if (!tk->attr)
 		tk->attr = g_hash_table_new_full(g_str_hash, g_str_equal,
-			g_free, free_geo_attr_notify);
+			g_free, (GDestroyNotify) booth__free_geo_attr);
 	if (!tk->attr) {
 		log_error("out of memory");
 		return -1;
@@ -280,18 +276,13 @@ store_geo_attr(struct ticket_config *tk, const char *name, const char *val,
 				   "(%d+ bytes), skipped",
 				   BOOTH_ATTRVAL_LEN);
 	else {
-		a = (struct geo_attr *)calloc(1, sizeof(struct geo_attr));
-		if (!a) {
-			log_error("out of memory");
-			return -1;
-		}
+		struct geo_attr *attr = g_new0(struct geo_attr, 1);
 
-		a->val = g_strdup(val);
+		attr->val = g_strdup(val);
 		if (!notime)
-			get_time(&a->update_ts);
+			get_time(&attr->update_ts);
 
-		g_hash_table_insert(tk->attr,
-			g_strdup(name), a);
+		g_hash_table_insert(tk->attr, g_strdup(name), attr);
 	}
 
 	return 0;
