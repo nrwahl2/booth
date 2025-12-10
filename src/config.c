@@ -913,7 +913,7 @@ out:
               lineno);
     g_free(error);
 
-    g_clear_pointer(conf, free);
+    g_clear_pointer(conf, free_booth_config);
     return -1;
 }
 
