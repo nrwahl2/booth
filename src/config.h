@@ -175,8 +175,6 @@ struct ticket_config {
 	/** Who the various sites vote for.
 	 * NO_OWNER = no vote yet. */
 	struct booth_site *votes_for[MAX_NODES];
-	/* bitmap */
-	uint64_t votes_received;
 
 	/** Last voting round that was seen. */
 	uint32_t current_term;
@@ -195,13 +193,6 @@ struct ticket_config {
 	 */
 	uint32_t outcome;
 	/** @} */
-
-
-	/** */
-	uint32_t last_applied;
-	uint32_t next_index[MAX_NODES];
-	uint32_t match_index[MAX_NODES];
-
 
 	/* Why did we start the elections?
 	*/
@@ -224,8 +215,6 @@ struct ticket_config {
 	/* bitmask of servers which sent acks
 	 */
 	uint64_t acks_received;
-	/* timestamp of the request */
-	timetype req_sent_at;
 	/* we need to wait for MY_INDEX from other servers,
 	 * hold the ticket processing for a while until they reply
 	 */
@@ -248,8 +237,7 @@ struct ticket_config {
 	/* don't log warnings unnecessarily
 	 */
 	bool expect_more_rejects;
-	/** \name Needed while proposals are being done.
-	 * @{ */
+
 	/* Need to keep the previous valid ticket in case we moved to
 	 * start new elections and another server asks for the ticket
 	 * status. It would be wrong to send our candidate ticket.
@@ -264,30 +252,10 @@ struct ticket_config {
 	 */
 	GList *attr_prereqs;
 
-	/** Whom to vote for the next time.
-	 * Needed to push a ticket to someone else. */
-
-
-
-#if 0
-	/** Bitmap of sites that acknowledge that state. */
-	uint64_t proposal_acknowledges;
-
-	/** When an incompletely acknowledged proposal gets done.
-	 * If all peers agree, that happens sooner.
-	 * See switch_state_to(). */
-	struct timeval proposal_switch;
-
-	/** Timestamp of proposal expiration. */
-	time_t proposal_expires;
-
-#endif
-
 	/** Number of send retries left.
 	 * Used on the new owner.
 	 * Starts at 0, counts up. */
 	int retry_number;
-	/** @} */
 };
 
 struct booth_config {

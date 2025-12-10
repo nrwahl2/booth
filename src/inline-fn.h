@@ -205,7 +205,6 @@ expect_replies(struct ticket_config *tk, int reply_type)
 	tk->retry_number = 0;
 	tk->acks_expected = reply_type;
 	tk->acks_received = local->bitmask;
-	get_time(&tk->req_sent_at);
 }
 
 static inline void

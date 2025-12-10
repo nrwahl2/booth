@@ -45,7 +45,6 @@ static inline void
 clear_election(const struct booth_config *conf, struct ticket_config *tk)
 {
     booth__ticket_debug(tk, "clear election");
-    tk->votes_received = 0;
     booth__foreach_const_site(conf, clear_site_vote, tk);
 }
 
@@ -58,7 +57,7 @@ record_vote(struct ticket_config *tk, struct booth_site *who,
 
 	if (!tk->votes_for[who->index]) {
 		tk->votes_for[who->index] = vote;
-		tk->votes_received |= who->bitmask;
+
 	} else if (tk->votes_for[who->index] != vote) {
 		booth__ticket_warn(tk,
 				   "%s voted previously for %s and now wants "

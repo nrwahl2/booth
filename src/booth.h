@@ -293,9 +293,6 @@ struct booth_site {
 	int type;
 	int local;
 
-	/** Roles, like ACCEPTOR, PROPOSER, or LEARNER. Not really used ATM. */
-	int role;
-
 	boothc_site addr_string;
 
 	int tcp_fd;
@@ -327,8 +324,6 @@ struct booth_site {
 	uint32_t last_secs;
 	uint32_t last_usecs;
 };
-
-
 
 extern struct booth_site *local;
 extern struct booth_site *const no_leader;
