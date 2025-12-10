@@ -48,6 +48,14 @@ struct parser_context {
     gchar *error;
 };
 
+struct parser_fn_info {
+    const char *key;
+    bool (*fn)(struct booth_config *, struct parser_context *);
+
+    //! Option requires that a previous option has already set current ticket
+    bool requires_ticket;
+};
+
 static void
 free_attr_prereq(struct attr_prereq *prereq)
 {
@@ -381,6 +389,7 @@ parse_name(struct booth_config *conf, struct parser_context *context)
     return true;
 }
 
+#if (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
 static bool
 parse_authfile(struct booth_config *conf, struct parser_context *context)
 {
@@ -395,6 +404,7 @@ parse_maxtimeskew(struct booth_config *conf, struct parser_context *context)
     conf->maxtimeskew = atoi(context->value);
     return true;
 }
+#endif  // (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
 
 static bool
 parse_site(struct booth_config *conf, struct parser_context *context)
@@ -694,6 +704,50 @@ parse_weights(struct booth_config *conf, struct parser_context *context)
     return true;
 }
 
+static const struct parser_fn_info *
+get_parser_fn_info(const char *key)
+{
+    static const struct parser_fn_info infos[] = {
+        { "acquire-after", parse_acquire_after, true },
+        { "arbitrator", parse_arbitrator, false },
+        { "arbitrator-group", parse_arbitrator_group, false },
+        { "arbitrator-user", parse_arbitrator_user, false },
+        { "attr-prereq", parse_attr_prereq, true },
+        { "before-acquire-handler", parse_before_acquire_handler, true },
+        { "debug", parse_debug, false },
+        { "expire", parse_expire, true },
+        { "mode", parse_mode, true },
+        { "name", parse_name, false },
+        { "port", parse_port, false },
+        { "renewal-freq", parse_renewal_freq, true },
+        { "retries", parse_retries, true },
+        { "site", parse_site, false },
+        { "site-group", parse_site_group, false },
+        { "site-user", parse_site_user, false },
+        { "ticket", parse_ticket, false },
+        { "timeout", parse_timeout, true },
+        { "weights", parse_weights, true },
+
+#if (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
+        { "authfile", parse_authfile, false },
+        { "maxtimeskew", parse_maxtimeskew, false },
+#endif  // (HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH)
+
+        // @COMPAT Deprecated since 1.3
+        { "transport", parse_transport, false },
+
+        { NULL, },
+    };
+
+    for (const struct parser_fn_info *info = infos; info->key != NULL; info++) {
+        if (strcmp(key, info->key) == 0) {
+            return info;
+        }
+    }
+
+    return NULL;
+}
+
 int
 booth__read_config(struct booth_config **conf, const char *path)
 {
@@ -701,6 +755,7 @@ booth__read_config(struct booth_config **conf, const char *path)
     FILE *fp = NULL;
     int lineno = 0;
     struct parser_context context = { NULL, };
+    const struct parser_fn_info *fn_info = NULL;
 
     assert(conf != NULL);
     free(*conf);
@@ -823,174 +878,24 @@ booth__read_config(struct booth_config **conf, const char *path)
         context.key = key;
         context.value = val;
 
-        // @COMPAT Deprecated since 1.3
-        if (strcmp(key, "transport") == 0) {
-            if (!parse_transport(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "port") == 0) {
-            if (!parse_port(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "name") == 0) {
-            if (!parse_name(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-#if HAVE_LIBGNUTLS || HAVE_LIBGCRYPT || HAVE_LIBMHASH
-        if (strcmp(key, "authfile") == 0) {
-            if (!parse_authfile(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "maxtimeskew") == 0) {
-            if (!parse_maxtimeskew(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-#endif
-
-        if (strcmp(key, "site") == 0) {
-            if (!parse_site(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "arbitrator") == 0) {
-            if (!parse_arbitrator(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "site-user") == 0) {
-            if (!parse_site_user(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "site-group") == 0) {
-            if (!parse_site_group(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "arbitrator-user") == 0) {
-            if (!parse_arbitrator_user(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "arbitrator-group") == 0) {
-            if (!parse_arbitrator_group(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "debug") == 0) {
-            if (!parse_debug(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "ticket") == 0) {
-            if (!parse_ticket(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        /* context.ticket must be allocated at this point. Otherwise, we don't
-         * know to which ticket the key refers.
-         */
-        if (context.ticket == NULL) {
-            context.error = g_strdup_printf("Unexpected keyword \"%s\"", key);
+        fn_info = get_parser_fn_info(context.key);
+        if (fn_info == NULL) {
+            context.error = g_strdup_printf("Unknown keyword \"%s\"",
+                                            context.key);
             goto err;
         }
 
-        if (strcmp(key, "expire") == 0) {
-            if (!parse_expire(*conf, &context)) {
-                goto err;
-            }
-            continue;
+        if (fn_info->requires_ticket && (context.ticket == NULL)) {
+            context.error = g_strdup_printf("Option %s can occur only below a "
+                                            "ticket option", context.key);
+            goto err;
         }
 
-        if (strcmp(key, "timeout") == 0) {
-            if (!parse_timeout(*conf, &context)) {
-                goto err;
-            }
-            continue;
+        if (!fn_info->fn(*conf, &context)) {
+            goto err;
         }
-
-        if (strcmp(key, "retries") == 0) {
-            if (!parse_retries(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "renewal-freq") == 0) {
-            if (!parse_renewal_freq(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "acquire-after") == 0) {
-            if (!parse_acquire_after(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "before-acquire-handler") == 0) {
-            if (!parse_before_acquire_handler(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "attr-prereq") == 0) {
-            if (!parse_attr_prereq(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "mode") == 0) {
-            if (!parse_mode(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        if (strcmp(key, "weights") == 0) {
-            if (!parse_weights(*conf, &context)) {
-                goto err;
-            }
-            continue;
-        }
-
-        context.error = g_strdup_printf("Unknown keyword \"%s\"", key);
-        goto err;
     }
+
     fclose(fp);
 
     if (((*conf)->site_count % 2) == 0) {
