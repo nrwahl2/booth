@@ -318,53 +318,6 @@ postproc_ticket(struct ticket_config *tk)
 	return 1;
 }
 
-/* returns number of weights, or -1 on bad input. */
-static int
-do_parse_weights(const char *input, int weights[MAX_NODES])
-{
-	int i, v;
-	char *cp;
-
-	for(i=0; i<MAX_NODES; i++) {
-		/* End of input? */
-		if (*input == 0)
-			break;
-
-		v = strtol(input, &cp, 0);
-		if (input == cp) {
-			log_error("No integer weight value at \"%s\"", input);
-			return -1;
-		}
-
-		weights[i] = v;
-
-		while (*cp) {
-			/* Separator characters */
-			if (isspace(*cp) ||
-					strchr(",;:-+", *cp))
-				cp++;
-			/* Next weight */
-			else if (isdigit(*cp))
-				break;
-			/* Rest */
-			else {
-				log_error("Invalid character at \"%s\"", cp);
-				return -1;
-			}
-		}
-
-		input = cp;
-	}
-
-
-	/* Fill rest of vector. */
-	for(v=i; v<MAX_NODES; v++) {
-		weights[v] = 0;
-	}
-
-	return i;
-}
-
 /* scan val for time; time is [0-9]+(ms)?, i.e. either in seconds
  * or milliseconds
  * returns -1 on failure, otherwise time in ms
@@ -735,7 +688,47 @@ static bool
 parse_weights(struct booth_config *conf, const char *value, action_t action,
               struct ticket_config **ticket, gchar **error)
 {
-    return (do_parse_weights(value, (*ticket)->weight) >= 0);
+    int i, v;
+    char *cp;
+
+    for(i=0; i<MAX_NODES; i++) {
+        /* End of input? */
+        if (*value == 0)
+            break;
+
+        v = strtol(value, &cp, 0);
+        if (value == cp) {
+            log_error("No integer weight value at \"%s\"", value);
+            return false;
+        }
+
+        (*ticket)->weight[i] = v;
+
+        while (*cp) {
+            /* Separator characters */
+            if (isspace(*cp) ||
+                strchr(",;:-+", *cp))
+                cp++;
+            /* Next weight */
+            else if (isdigit(*cp))
+                break;
+            /* Rest */
+            else {
+                log_error("Invalid character at \"%s\"", cp);
+                return false;
+            }
+        }
+
+        value = cp;
+    }
+
+
+    /* Fill rest of vector. */
+    for(v=i; v<MAX_NODES; v++) {
+        (*ticket)->weight[v] = 0;
+    }
+
+    return true;
 }
 
 int
