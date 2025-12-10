@@ -89,7 +89,6 @@ timetype start_time;
  * happens _only_ by their numeric index. */
 static GArray *clients = NULL;  // struct client *
 static GArray *pollfds = NULL;  // struct pollfd *
-int poll_timeout = 0;
 
 static const struct booth_site _no_leader = {
 	.addr_string = "none",
@@ -507,7 +506,7 @@ loop(struct booth_config *conf, int fd)
     while (true) {
         if (pollfds != NULL) {
             rc = poll((struct pollfd *) pollfds->data, pollfds->len,
-                      poll_timeout);
+                      conf->poll_timeout);
 
             if ((rc == -1) && (errno == EINTR)) {
                 continue;

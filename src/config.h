@@ -289,6 +289,17 @@ struct booth_config {
     uid_t uid;
     gid_t gid;
 
+    /**
+     * Timeout value for \c poll().
+     * Determines frequency of periodic jobs (for example, when send-retries are
+     * done).
+     * See \c booth__process_ticket().
+     *
+     * \todo This comment, as well as the man page description of ticket timeout
+     *       (from which this is derived), may no longer be accurate.
+     */
+    int poll_timeout;
+
     int site_count;
     struct booth_site sites[MAX_NODES];
 

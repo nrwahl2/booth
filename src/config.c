@@ -360,8 +360,6 @@ read_time(const char *val)
 	return t;
 }
 
-extern int poll_timeout;
-
 static bool
 parse_acquire_after(struct booth_config *conf, struct parser_context *context)
 {
@@ -927,9 +925,9 @@ booth__read_config(struct booth_config **conf, const char *path)
         goto out;
     }
 
-    poll_timeout = min(POLL_TIMEOUT, context.min_timeout / 10);
-    if (poll_timeout == 0) {
-        poll_timeout = POLL_TIMEOUT;
+    (*conf)->poll_timeout = min(100, context.min_timeout / 10);
+    if ((*conf)->poll_timeout == 0) {
+        (*conf)->poll_timeout = 100;
     }
 
     return 0;

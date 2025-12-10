@@ -55,13 +55,6 @@
 #define BOOTHC_MAGIC		0x5F1BA08C
 #define BOOTHC_VERSION		0x00010003
 
-
-/** Timeout value for poll().
- * Determines frequency of periodic jobs, eg. when send-retries are done.
- * See booth__process_ticket(). */
-#define POLL_TIMEOUT	100
-
-
 /** @{ */
 /** The on-network data structures and constants. */
 
