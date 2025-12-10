@@ -137,7 +137,7 @@ hostname_to_ip(char *hostname)
 }
 
 static int
-add_site(struct booth_config *conf, char *addr_string, int type)
+add_site(struct booth_config *conf, const char *addr_string, int type)
 {
 	int rv = 0;
 	struct booth_site *site;
@@ -370,7 +370,7 @@ do_parse_weights(const char *input, int weights[MAX_NODES])
  * returns -1 on failure, otherwise time in ms
  */
 static long
-read_time(char *val)
+read_time(const char *val)
 {
 	long t;
 	char *ep;
@@ -394,7 +394,7 @@ read_time(char *val)
 extern int poll_timeout;
 
 static bool
-parse_transport(struct booth_config *conf, char *value, action_t action,
+parse_transport(struct booth_config *conf, const char *value, action_t action,
                 struct ticket_config **ticket, gchar **error)
 {
     if (strcasecmp(value, "UDP") != 0) {
@@ -406,7 +406,7 @@ parse_transport(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_port(struct booth_config *conf, char *value, action_t action,
+parse_port(struct booth_config *conf, const char *value, action_t action,
            struct ticket_config **ticket, gchar **error)
 {
     // @FIXME Use strtol() and error-check
@@ -415,7 +415,7 @@ parse_port(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_name(struct booth_config *conf, char *value, action_t action,
+parse_name(struct booth_config *conf, const char *value, action_t action,
            struct ticket_config **ticket, gchar **error)
 {
     safe_copy(conf->name, value, BOOTH_NAME_LEN, "name");
@@ -423,7 +423,7 @@ parse_name(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_authfile(struct booth_config *conf, char *value, action_t action,
+parse_authfile(struct booth_config *conf, const char *value, action_t action,
                struct ticket_config **ticket, gchar **error)
 {
     safe_copy(conf->authfile, value, BOOTH_PATH_LEN, "authfile");
@@ -431,7 +431,7 @@ parse_authfile(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_maxtimeskew(struct booth_config *conf, char *value, action_t action,
+parse_maxtimeskew(struct booth_config *conf, const char *value, action_t action,
                   struct ticket_config **ticket, gchar **error)
 {
     // @FIXME Use strtol() and error-check
@@ -440,21 +440,21 @@ parse_maxtimeskew(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_site(struct booth_config *conf, char *value, action_t action,
+parse_site(struct booth_config *conf, const char *value, action_t action,
            struct ticket_config **ticket, gchar **error)
 {
     return add_site(conf, value, SITE);
 }
 
 static bool
-parse_arbitrator(struct booth_config *conf, char *value, action_t action,
+parse_arbitrator(struct booth_config *conf, const char *value, action_t action,
                  struct ticket_config **ticket, gchar **error)
 {
     return add_site(conf, value, ARBITRATOR);
 }
 
 static bool
-parse_site_user(struct booth_config *conf, char *value, action_t action,
+parse_site_user(struct booth_config *conf, const char *value, action_t action,
                 struct ticket_config **ticket, gchar **error)
 {
     safe_copy(conf->site_user, value, BOOTH_NAME_LEN, "site-user");
@@ -462,7 +462,7 @@ parse_site_user(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_site_group(struct booth_config *conf, char *value, action_t action,
+parse_site_group(struct booth_config *conf, const char *value, action_t action,
                  struct ticket_config **ticket, gchar **error)
 {
     safe_copy(conf->site_group, value, BOOTH_NAME_LEN, "site-group");
@@ -470,23 +470,25 @@ parse_site_group(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_arbitrator_user(struct booth_config *conf, char *value, action_t action,
-                      struct ticket_config **ticket, gchar **error)
+parse_arbitrator_user(struct booth_config *conf, const char *value,
+                      action_t action, struct ticket_config **ticket,
+                      gchar **error)
 {
     safe_copy(conf->arb_user, value, BOOTH_NAME_LEN, "arbitrator-user");
     return true;
 }
 
 static bool
-parse_arbitrator_group(struct booth_config *conf, char *value, action_t action,
-                       struct ticket_config **ticket, gchar **error)
+parse_arbitrator_group(struct booth_config *conf, const char *value,
+                       action_t action, struct ticket_config **ticket,
+                       gchar **error)
 {
     safe_copy(conf->arb_group, value, BOOTH_NAME_LEN, "arbitrator-group");
     return true;
 }
 
 static bool
-parse_debug(struct booth_config *conf, char *value, action_t action,
+parse_debug(struct booth_config *conf, const char *value, action_t action,
             struct ticket_config **ticket, gchar **error)
 {
     if ((action != CLIENT) && (action != GEOSTORE)) {
@@ -498,7 +500,7 @@ parse_debug(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_ticket(struct booth_config *conf, char *value, action_t action,
+parse_ticket(struct booth_config *conf, const char *value, action_t action,
              struct ticket_config **ticket, gchar **error)
 {
     static struct ticket_config defaults = {
@@ -535,7 +537,7 @@ parse_ticket(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_expire(struct booth_config *conf, char *value, action_t action,
+parse_expire(struct booth_config *conf, const char *value, action_t action,
              struct ticket_config **ticket, gchar **error)
 {
     (*ticket)->term_duration = read_time(value);
@@ -549,7 +551,7 @@ parse_expire(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_timeout(struct booth_config *conf, char *value, action_t action,
+parse_timeout(struct booth_config *conf, const char *value, action_t action,
               struct ticket_config **ticket, gchar **error)
 {
     (*ticket)->timeout = read_time(value);
@@ -569,7 +571,7 @@ parse_timeout(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_retries(struct booth_config *conf, char *value, action_t action,
+parse_retries(struct booth_config *conf, const char *value, action_t action,
               struct ticket_config **ticket, gchar **error)
 {
     char *end = NULL;
@@ -590,8 +592,9 @@ parse_retries(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_renewal_freq(struct booth_config *conf, char *value, action_t action,
-                   struct ticket_config **ticket, gchar **error)
+parse_renewal_freq(struct booth_config *conf, const char *value,
+                   action_t action, struct ticket_config **ticket,
+                   gchar **error)
 {
     (*ticket)->renewal_freq = read_time(value);
 
@@ -604,8 +607,9 @@ parse_renewal_freq(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_acquire_after(struct booth_config *conf, char *value, action_t action,
-                    struct ticket_config **ticket, gchar **error)
+parse_acquire_after(struct booth_config *conf, const char *value,
+                    action_t action, struct ticket_config **ticket,
+                    gchar **error)
 {
     (*ticket)->acquire_after = read_time(value);
 
@@ -618,7 +622,7 @@ parse_acquire_after(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_before_acquire_handler(struct booth_config *conf, char *value,
+parse_before_acquire_handler(struct booth_config *conf, const char *value,
                              action_t action, struct ticket_config **ticket,
                              gchar **error)
 {
@@ -664,7 +668,7 @@ parse_attr_op(const char *attr_op)
 }
 
 static bool
-parse_attr_prereq(struct booth_config *conf, char *value, action_t action,
+parse_attr_prereq(struct booth_config *conf, const char *value, action_t action,
                   struct ticket_config **ticket, gchar **error)
 {
     // Free using free_attr_prereq()
@@ -711,7 +715,7 @@ done:
 }
 
 static bool
-parse_mode(struct booth_config *conf, char *value, action_t action,
+parse_mode(struct booth_config *conf, const char *value, action_t action,
            struct ticket_config **ticket, gchar **error)
 {
     if (strcasecmp(value, "manual") == 0) {
@@ -728,7 +732,7 @@ parse_mode(struct booth_config *conf, char *value, action_t action,
 }
 
 static bool
-parse_weights(struct booth_config *conf, char *value, action_t action,
+parse_weights(struct booth_config *conf, const char *value, action_t action,
               struct ticket_config **ticket, gchar **error)
 {
     return (do_parse_weights(value, (*ticket)->weight) >= 0);
@@ -779,8 +783,8 @@ booth__read_config(struct booth_config **conf, const char *path,
     while (fgets(line, sizeof(line), fp)) {
         int i = 0;
         char *s = NULL;
-        char *key = NULL;
-        char *val = NULL;
+        const char *key = NULL;
+        const char *val = NULL;
         char *end_of_key = NULL;
 
         lineno++;
