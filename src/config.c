@@ -42,6 +42,17 @@
 // @TODO Make this no longer file-scope
 static int min_timeout = 0;
 
+static void
+free_attr_prereq(struct attr_prereq *prereq)
+{
+    if (prereq == NULL) {
+        return;
+    }
+    free(prereq->attr_name);
+    free(prereq->attr_val);
+    free(prereq);
+}
+
 void
 free_booth_config(struct booth_config *conf)
 {
@@ -460,13 +471,7 @@ do_parse_attr_prereq(char *val, struct ticket_config *tk)
 	return 0;
 
 err_out:
-	if (ap) {
-		if (ap->attr_val)
-			free(ap->attr_val);
-		if (ap->attr_name)
-			free(ap->attr_name);
-		free(ap);
-	}
+    free_attr_prereq(ap);
 	return -1;
 }
 
