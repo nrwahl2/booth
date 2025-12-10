@@ -759,14 +759,14 @@ booth__read_config(struct booth_config **conf, const char *path,
         }
 
         if (*end_of_key == '\0') {
-            goto exp_equal;
+            error = g_strdup("Expected '=' after key");
+            goto err;
         }
 
         // Whitespace, and something else but nothing more?
         s = g_strchug(end_of_key);
 
         if (*s != '=') {
-exp_equal:
             error = g_strdup("Expected '=' after key");
             goto err;
         }
@@ -803,7 +803,6 @@ exp_equal:
                 break;
 
             case 0:
-no_value:
                 error = g_strdup("No value");
                 goto err;
 
@@ -813,7 +812,8 @@ no_value:
         }
 
         if (*val == '\0') {
-            goto no_value;
+            error = g_strdup("No value");
+            goto err;
         }
 
         if ((strlen(key) > BOOTH_NAME_LEN) || (strlen(val) > BOOTH_NAME_LEN)) {
