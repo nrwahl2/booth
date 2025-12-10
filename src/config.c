@@ -365,17 +365,6 @@ do_parse_weights(const char *input, int weights[MAX_NODES])
 	return i;
 }
 
-/* returns TICKET_MODE_AUTO if failed to parse the ticket mode. */
-static ticket_mode_e
-retrieve_ticket_mode(const char *input)
-{
-	if (strcasecmp(input, "manual") == 0) {
-		return TICKET_MODE_MANUAL;
-	}
-
-	return TICKET_MODE_AUTO;
-}
-
 /* scan val for time; time is [0-9]+(ms)?, i.e. either in seconds
  * or milliseconds
  * returns -1 on failure, otherwise time in ms
@@ -755,7 +744,16 @@ static bool
 parse_mode(struct booth_config *conf, char *value, action_t action,
            struct ticket_config **ticket, gchar **error)
 {
-    (*ticket)->mode = retrieve_ticket_mode(value);
+    if (strcasecmp(value, "manual") == 0) {
+        (*ticket)->mode = TICKET_MODE_MANUAL;
+
+    } else {
+        /* @COMPAT Be more strict and throw an error on unrecognized values?
+         * Anything other than "manual" is parsed to "auto".
+         */
+        (*ticket)->mode = TICKET_MODE_AUTO;
+    }
+
     return true;
 }
 
