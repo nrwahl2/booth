@@ -391,28 +391,28 @@ read_time(char *val)
 	return t;
 }
 
-struct toktab grant_type[] = {
-	{ "auto", GRANT_AUTO},
-	{ "manual", GRANT_MANUAL},
-	{ NULL, 0},
-};
-
-struct toktab attr_op[] = {
-	{"eq", ATTR_OP_EQ},
-	{"ne", ATTR_OP_NE},
-	{NULL, 0},
-};
-
-static int
-lookup_tokval(char *key, struct toktab *tab)
+static grant_type_e
+parse_grant_type(const char *grant_type)
 {
-	struct toktab *tp;
+    if (strcmp(grant_type, "auto") == 0) {
+        return GRANT_AUTO;
+    }
+    if (strcmp(grant_type, "manual") == 0) {
+        return GRANT_MANUAL;
+    }
+    return 0;
+}
 
-	for (tp = tab; tp->str; tp++) {
-		if (!strcmp(tp->str, key))
-			return tp->val;
-	}
-	return 0;
+static attr_op_e
+parse_attr_op(const char *attr_op)
+{
+    if (strcmp(attr_op, "eq") == 0) {
+        return ATTR_OP_EQ;
+    }
+    if (strcmp(attr_op, "ne") == 0) {
+        return ATTR_OP_NE;
+    }
+    return 0;
 }
 
 /* attribute prerequisite
@@ -434,7 +434,7 @@ do_parse_attr_prereq(char *val, struct ticket_config *tk)
 		log_error("not enough arguments to attr-prereq");
 		goto err_out;
 	}
-	ap->grant_type = lookup_tokval(p, grant_type);
+	ap->grant_type = parse_grant_type(p);
 	if (!ap->grant_type) {
 		log_error("%s is not a grant type", p);
 		goto err_out;
@@ -455,7 +455,7 @@ do_parse_attr_prereq(char *val, struct ticket_config *tk)
 		log_error("not enough arguments to attr-prereq");
 		goto err_out;
 	}
-	ap->op = lookup_tokval(p, attr_op);
+	ap->op = parse_attr_op(p);
 	if (!ap->op) {
 		log_error("%s is not an attribute operation", p);
 		goto err_out;

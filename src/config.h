@@ -73,11 +73,6 @@ typedef enum {
 	TICKET_MODE_MANUAL,
 } ticket_mode_e;
 
-struct toktab {
-	const char *str;
-	int val;
-};
-
 struct attr_prereq {
 	grant_type_e grant_type; /* grant type */
 	attr_op_e op; /* attribute operation */
